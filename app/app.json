@@ -1,0 +1,10 @@
+{
+  "slug": "assay",
+  "name": "Assay",
+  "tagline": "The blind trial for your model stack.",
+  "description": "Assay is a blind trial bench for LLM users on Anna OS. Paste a real workload, pick the models you already have keys for, and Assay runs it across all of them in parallel with the names stripped and shuffled. When the run finishes you get a blind verdict: rubric scores, token cost, latency and divergence notes across anonymised outputs. Crown a winner before the reveal, then lift the blind and see which model actually earned it.\n\nEvery crown feeds a personal routing policy. After a handful of trials, Assay holds your default, your fallback and your budget lane per task type, exportable as plain JSON for your own agents.\n\nThe judge never sees model names. Cost is computed from measured tokens against a versioned price table. Failed providers degrade to marked columns, nothing is substituted or retried into existence.\n\nRuns on Anna credits or BYOK, both count the same. The landing page's verdict anatomy is a real recorded trial with the workload published beside it.\n\n**Primary function:** run a blind trial and return a verdict.",
+  "category": "developer-tools",
+  "pricing_model": "free",
+  "homepage_url": "https://github.com/dr4ken-soul/Assay",
+  "support_url": "https://github.com/dr4ken-soul/Assay/issues"
+}

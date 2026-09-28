@@ -1,0 +1,34 @@
+# dependencies
+node_modules/
+
+# build output
+# the UI bundle is uploaded through the bundle pipeline, it is not committed
+app/ui/dist/
+web/.next/
+web/out/
+
+# the tool's dist IS committed on purpose: anna-app dev runs `node dist/index.js`
+# and the harness does not run npm install, so a fresh clone must be runnable
+# without a build step.
+
+# local platform state
+.anna/
+.anna-app/
+
+# environment
+.env
+.env.local
+.env*.local
+
+# harness recordings and traces
+*.jsonl
+
+# editor and os
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# logs
+*.log
+npm-debug.log*

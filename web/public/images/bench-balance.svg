@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600" role="img" aria-label="A precision beam balance caught mid-pivot">
+  <defs>
+    <linearGradient id="bb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8ebe6"/><stop offset="1" stop-color="#d5d9d4"/></linearGradient>
+    <linearGradient id="bs" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#cfd4cf"/><stop offset="0.5" stop-color="#eef1ed"/><stop offset="1" stop-color="#c0c5c0"/></linearGradient>
+  </defs>
+  <rect width="800" height="600" fill="url(#bb)"/>
+  <g stroke="#141814" stroke-opacity="0.06"><path d="M0 150h800M0 300h800M0 450h800M160 0v600M320 0v600M480 0v600M640 0v600"/></g>
+  <g transform="translate(400 340)">
+    <rect x="-160" y="120" width="320" height="26" rx="6" fill="url(#bs)" stroke="#141814" stroke-opacity="0.4"/>
+    <path d="M-60 120 0 20 60 120Z" fill="#b9beb9" stroke="#141814" stroke-opacity="0.4"/>
+    <g transform="rotate(-7)">
+      <rect x="-250" y="6" width="500" height="10" rx="5" fill="url(#bs)" stroke="#141814" stroke-opacity="0.4"/>
+      <path d="M-210 16v70M210 16v70" stroke="#141814" stroke-opacity="0.45" stroke-width="2"/>
+      <path d="M-244 86h68a34 34 0 0 1-68 0Z" fill="#b9beb9" stroke="#141814" stroke-opacity="0.4"/>
+      <path d="M176 86h68a34 34 0 0 1-68 0Z" fill="#b9beb9" stroke="#141814" stroke-opacity="0.4"/>
+    </g>
+    <path d="M0 20 0 -66" stroke="#d3301f" stroke-width="3" stroke-linecap="round"/>
+    <path d="M-40 6 40 6" stroke="#141814" stroke-opacity="0.3" stroke-width="1.5"/>
+  </g>
+</svg>

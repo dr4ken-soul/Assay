@@ -1,0 +1,91 @@
+{
+  "schema": 2,
+  "required_executas": [
+    {
+      "tool_id": "tool-dev-assay",
+      "min_version": "0.1.0",
+      "version": "latest"
+    }
+  ],
+  "optional_executas": [],
+  "host_capabilities": ["llm.sample", "aps.kv"],
+  "permissions": [
+    "tools.invoke",
+    "storage.get",
+    "storage.set",
+    "storage.list",
+    "ui.svg"
+  ],
+  "tags": ["developer-tools", "llm", "evaluation", "benchmarks", "model-routing", "byok"],
+  "system_prompt_addendum": "The user has the Assay app open. Assay is a blind trial bench: it runs one real workload across every model the user has selected, with the names shuffled to MODEL A, MODEL B and so on, then scores the anonymised outputs with a blind examiner and returns a verdict with rubric scores, token cost, latency and divergence notes. When the user asks to compare models, run a trial through the assay-core tool rather than answering from memory. Never state which real model produced which column before the user has crowned a winner and lifted the blind, the letters are the only identity the user should see. The declared primary function of this app is: run a blind trial and return a verdict.",
+  "user_message_prefix_template": "[Assay] {user_message}",
+  "ui": {
+    "bundle": {
+      "format": "static-spa",
+      "entry": "index.html",
+      "external_origins": [
+        "https://api.fontshare.com",
+        "https://cdn.fontshare.com",
+        "https://fonts.googleapis.com",
+        "https://fonts.gstatic.com"
+      ]
+    },
+    "views": [
+      {
+        "name": "bench",
+        "title": "Assay",
+        "default": true,
+        "entry": "index.html",
+        "min_size": { "w": 360, "h": 560 },
+        "default_size": { "w": 1080, "h": 820 },
+        "max_size": { "w": 1600, "h": 1200 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true,
+        "summary_template": "Assay bench. Tabs: bench, history, policy. The bench holds the workload field, the model roster chips and, once run, the anonymised columns, the blind verdict, the crown buttons and the unblind reveal. The ledger lists past verdicts. The policy screen shows the ranking, the per task type locks and the JSON export."
+      },
+      {
+        "name": "history",
+        "title": "Assay, ledger",
+        "entry": "index.html",
+        "min_size": { "w": 360, "h": 560 },
+        "default_size": { "w": 1080, "h": 820 },
+        "max_size": { "w": 1600, "h": 1200 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true,
+        "summary_template": "Assay ledger. A list of past trials, newest first, with the date, the workload excerpt, the crowned winner and the measured cost. Selecting a row opens the verdict read only."
+      },
+      {
+        "name": "policy",
+        "title": "Assay, routing policy",
+        "entry": "index.html",
+        "min_size": { "w": 360, "h": 560 },
+        "default_size": { "w": 1080, "h": 820 },
+        "max_size": { "w": 1600, "h": 1200 },
+        "resizable": true,
+        "movable": true,
+        "single_instance": true,
+        "summary_template": "Assay routing policy. The per model ranking with quality share bars, the locks for draft, rewrite, extract, code and analyse, and the JSON export button."
+      }
+    ],
+    "host_api": {
+      "tools": ["required:tool-dev-assay"],
+      "storage": ["get", "set", "list", "delete"],
+      "window": ["set_title", "open_view", "close", "focus", "resize"],
+      "llm": [],
+      "chat": [],
+      "files": []
+    },
+    "csp_overrides": {
+      "img-src": ["'self'", "data:", "blob:"],
+      "connect-src": ["'self'"]
+    },
+    "state_merge": "last_writer_wins"
+  },
+  "dev": {
+    "fixtures": [],
+    "seed_storage": {},
+    "user_id": 1
+  }
+}

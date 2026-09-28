@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="A mechanical stopwatch on the bench">
+  <defs>
+    <linearGradient id="sb" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8ebe6"/><stop offset="1" stop-color="#d9ddd8"/></linearGradient>
+    <linearGradient id="ss" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#cfd4cf"/><stop offset="0.5" stop-color="#eef1ed"/><stop offset="1" stop-color="#c4c9c4"/></linearGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#sb)"/>
+  <g stroke="#141814" stroke-opacity="0.06"><path d="M0 100h400M0 200h400M0 300h400M100 0v400M200 0v400M300 0v400"/></g>
+  <g transform="translate(105 96)">
+    <rect x="76" y="-26" width="38" height="30" rx="6" fill="#b9beb9" stroke="#141814" stroke-opacity="0.45"/>
+    <rect x="30" y="-6" width="130" height="20" rx="8" fill="url(#ss)" stroke="#141814" stroke-opacity="0.4"/>
+    <circle cx="95" cy="118" r="96" fill="url(#ss)" stroke="#141814" stroke-opacity="0.4"/>
+    <circle cx="95" cy="118" r="78" fill="#f7f9f5" stroke="#141814" stroke-opacity="0.28"/>
+    <g stroke="#141814" stroke-opacity="0.4" stroke-width="2">
+      <path d="M95 40v12M95 184v12M17 118h12M161 118h12"/>
+      <path d="M40 63l9 9M150 63l-9 9M40 173l9-9M150 173l-9-9" stroke-opacity="0.28"/>
+    </g>
+    <path d="M95 118 128 78" stroke="#141814" stroke-width="4" stroke-linecap="round"/>
+    <path d="M95 118 154 136" stroke="#d3301f" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="95" cy="118" r="7" fill="#141814"/>
+  </g>
+</svg>

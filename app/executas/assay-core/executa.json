@@ -1,0 +1,6 @@
+{
+  "tool_id": "tool-dev-assay",
+  "type": "node",
+  "command": ["node", "dist/index.js"],
+  "_comment": "Swap tool_id for the id minted at https://anna.partners/executa before publishing. The same string must appear in manifest.json required_executas and ui.host_api.tools."
+}

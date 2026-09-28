@@ -1,0 +1,28 @@
+# The Executa protocol is LF-delimited UTF-8 JSON over stdio. A CRLF in the
+# plugin sources or in the committed dist would break the framing, so the whole
+# tool is pinned to LF, and no BOM is ever added.
+* text=auto eol=lf
+
+app/executas/assay-core/** text eol=lf
+app/executas/assay-core/dist/** text eol=lf
+
+*.json text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.mjs text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.svg text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
+
+# Binary, never touched
+*.png binary
+*.jpg binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary

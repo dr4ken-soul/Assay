@@ -1,0 +1,45 @@
+﻿
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/Paul/Documents/Coding Area/Hackathon/Assay/app/ui[39m
+
+ [31mΓ¥»[39m test/blind.test.tsx [2m([22m[2m9 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 6370[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m the blind[2m > [22mshows no model name while the blind verdict is on screen [33m1150[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m the blind[2m > [22mreveals the names only after the crown [33m1121[2mms[22m[39m
+[31m   [31m├ù[31m the blind[2m > [22mmarks a failed column and keeps it out of the scored set[33m 1123[2mms[22m[31m[39m
+[31m     ΓåÆ expected 'MODEL CFAILEDANNA CREDITS / 0.0sNO COΓÇª' to contain 'the key for this provider was rejected'[39m
+   [33m[2mΓ£ô[22m[39m the blind[2m > [22moffers a tie and a crown for every letter, and no crown twice [33m1159[2mms[22m[39m
+   [33m[2mΓ£ô[22m[39m the blind[2m > [22mnever logs or sends a model name to the unblind path before it is crowned [33m1151[2mms[22m[39m
+
+node.exe : [31mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1m[7m Failed Tests 1 [27m[22mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[39m
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([31mΓÄ»ΓÄ»ΓÄ»Γ...»ΓÄ»ΓÄ»ΓÄ»[39m:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+[31m[1m[7m FAIL [27m[22m[39m test/blind.test.tsx[2m > [22mthe blind[2m > [22mmarks a failed column and keeps 
+it out of the scored set
+[31m[1mAssertionError[22m: expected 'MODEL CFAILEDANNA CREDITS / 0.0sNO COΓÇª' to contain 'the key for this 
+provider was rejected'[39m
+
+Expected: [32m"the key for this provider was rejected"[39m
+Received: [31m"MODEL CFAILEDANNA CREDITS / 0.0sNO COST BASIS"[39m
+
+[36m [2mΓ¥»[22m test/blind.test.tsx:[2m148:32[22m[39m
+    [90m146| [39m    [35mconst[39m failed [33m=[39m screen[33m.[39m[34mgetByTestId[39m([32m'verdict-MODEL 
+C'[39m)
+    [90m147| [39m    [34mexpect[39m(failed[33m.[39mtextContent)[33m.[39m[34mtoContain[39m([32m'FAILED'[39m)
+    [90m148| [39m    [34mexpect[39m(failed[33m.[39mtextContent)[33m.[39m[34mtoContain[39m([32m'the key for 
+this provider wa[39mΓÇª
+    [90m   | [39m                               [31m^[39m
+    [90m149| [39m    [34mexpect[39m(failed[33m.[39m[34mquerySelector[39m([32m'[data-testid="rubric-bars"]'[39
+m))[33m.[39m[34mtoBeNu[39mΓÇª
+    [90m150| [39m  })
+
+[31m[2mΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»ΓÄ»[1/1]ΓÄ»[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m8 passed[39m[22m[90m (9)[39m
+[2m   Start at [22m 21:15:29
+[2m   Duration [22m 11.06s[2m (transform 258ms, setup 36ms, collect 1.58s, tests 6.37s, environment 1.64s, prepare 871ms)[22m
+

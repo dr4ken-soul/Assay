@@ -1,0 +1,25 @@
+{
+  "name": "assay-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The Assay Executa. Blind multi-model trial execution, blind examination and routing policy.",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "assay-core": "dist/index.js"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "typescript": "^5.6.3"
+  },
+  "license": "MIT"
+}

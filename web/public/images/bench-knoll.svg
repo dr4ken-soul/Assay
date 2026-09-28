@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 720" width="1680" height="720" role="img" aria-label="The Assay Bench, knolled">
+  <defs>
+    <linearGradient id="bench" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e8ebe6"/><stop offset="1" stop-color="#d9ddd8"/>
+    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#cfd4cf"/><stop offset="0.5" stop-color="#eef1ed"/><stop offset="1" stop-color="#c4c9c4"/>
+    </linearGradient>
+  </defs>
+  <rect width="1680" height="720" fill="url(#bench)"/>
+  <g stroke="#141814" stroke-opacity="0.06" stroke-width="1">
+    <path d="M0 120h1680M0 240h1680M0 360h1680M0 480h1680M0 600h1680"/>
+    <path d="M140 0v720M420 0v720M700 0v720M980 0v720M1260 0v720M1540 0v720"/>
+  </g>
+  <!-- caliper, laid flat -->
+  <g transform="translate(150 470) rotate(-4)">
+    <rect x="0" y="0" width="330" height="26" rx="4" fill="url(#steel)" stroke="#141814" stroke-opacity="0.35"/>
+    <rect x="300" y="-14" width="16" height="54" rx="2" fill="#b9beb9" stroke="#141814" stroke-opacity="0.4"/>
+    <rect x="96" y="-10" width="14" height="46" rx="2" fill="#b9beb9" stroke="#141814" stroke-opacity="0.4"/>
+    <rect x="150" y="-8" width="120" height="6" fill="#141814" fill-opacity="0.55"/>
+    <rect x="214" y="-12" width="10" height="50" rx="1" fill="#d3301f"/>
+  </g>
+  <!-- stopwatch -->
+  <g transform="translate(560 420)">
+    <circle cx="90" cy="90" r="82" fill="url(#steel)" stroke="#141814" stroke-opacity="0.35"/>
+    <circle cx="90" cy="90" r="66" fill="#f7f9f5" stroke="#141814" stroke-opacity="0.25"/>
+    <g stroke="#141814" stroke-opacity="0.45" stroke-width="2">
+      <path d="M90 30v10M90 140v10M30 90h10M140 90h10"/>
+    </g>
+    <path d="M90 90 118 58" stroke="#141814" stroke-width="3" stroke-linecap="round"/>
+    <path d="M90 90 138 104" stroke="#d3301f" stroke-width="3" stroke-linecap="round"/>
+    <rect x="82" y="-6" width="16" height="18" rx="3" fill="#b9beb9" stroke="#141814" stroke-opacity="0.4"/>
+  </g>
+  <!-- calibration weights -->
+  <g transform="translate(880 470)">
+    <rect x="0" y="40" width="86" height="72" rx="4" fill="url(#steel)" stroke="#141814" stroke-opacity="0.35"/>
+    <rect x="100" y="16" width="72" height="96" rx="4" fill="url(#steel)" stroke="#141814" stroke-opacity="0.35"/>
+    <rect x="186" y="-8" width="60" height="120" rx="4" fill="url(#steel)" stroke="#141814" stroke-opacity="0.35"/>
+    <circle cx="43" cy="70" r="7" fill="#d3301f"/>
+  </g>
+  <!-- prism -->
+  <g transform="translate(1230 400)">
+    <path d="M40 160 130 20 220 160Z" fill="#eef1ed" fill-opacity="0.9" stroke="#141814" stroke-opacity="0.4"/>
+    <path d="M0 90h40" stroke="#141814" stroke-width="3" stroke-opacity="0.5"/>
+    <path d="M220 90 300 60" stroke="#d3301f" stroke-width="3" stroke-opacity="0.85"/>
+    <path d="M220 90 300 118" stroke="#4a524c" stroke-width="2" stroke-opacity="0.5"/>
+  </g>
+  <!-- gauge -->
+  <g transform="translate(1500 430)">
+    <circle cx="80" cy="80" r="74" fill="url(#steel)" stroke="#141814" stroke-opacity="0.35"/>
+    <circle cx="80" cy="80" r="60" fill="#f7f9f5" stroke="#141814" stroke-opacity="0.25"/>
+    <path d="M34 100A54 54 0 0 1 126 100" fill="none" stroke="#141814" stroke-opacity="0.3" stroke-width="2"/>
+    <path d="M80 80 112 50" stroke="#d3301f" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>
