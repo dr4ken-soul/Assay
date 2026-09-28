@@ -163,7 +163,7 @@ assay/
 │       ├── src/components/         Icon Primitives Skeleton
 │       ├── src/lib/                host types format motion
 │       ├── src/styles/globals.css  the design system
-│       ├── test/                   35 tests, 9 of them the blind check
+│       ├── test/                   37 tests, 9 of them the blind check
 │       ├── scripts/blind-check.mjs
 │       └── dist/                   built, uploaded through the bundle pipeline
 ├── web/                            the landing page
@@ -187,6 +187,26 @@ assay/
 ---
 
 ## Getting started
+
+### There is no `.env` file, and you should not create one
+
+This trips people up, so it is stated plainly: **this app has zero secrets and reads no environment variables.**
+
+`.env.example` in the repository root is a comment-only file. It documents which credentials exist so you know what to go and set up in Anna, and every line of it is commented out. Do not fill it in. Do not create a `.env`.
+
+Model API keys are entered **once, by you, in Anna's own credential UI**. Anna stores them encrypted at rest and injects the value into each tool call, request scoped. The plugin reads them from that injection and nowhere else:
+
+```
+you paste a key into Anna  ->  Anna stores it encrypted
+                            ->  you run a trial
+                            ->  Anna injects the key into that one invoke
+                            ->  the plugin uses it in an HTTP header
+                            ->  the plugin drops it
+```
+
+The plugin never reads `process.env`, never caches a key between requests, never writes one to storage and never logs one. That is not a policy note, it is a property of the code: `grep process.env app/executas/assay-core/src` returns nothing.
+
+If you ever find yourself wanting to put a key in a file, you have found a bug, not a missing step.
 
 ### Prerequisites
 
@@ -259,7 +279,7 @@ cd app/executas/assay-core && npm test
 # protocol smoke: v2 handshake, describe, health, unknown method, no credential echo
 cd app/executas/assay-core && npm run smoke
 
-# 35 bundle tests, including the nine blind cases and the manifest contract
+# 37 bundle tests, including the nine blind cases and the tool id contract
 cd app/ui && npm test
 
 # the blind check on its own: static scan plus the DOM suite
@@ -269,7 +289,7 @@ cd app/ui && npm run blind-check
 cd app && anna-app validate --strict --bundle ui/dist
 ```
 
-`contract.test.ts` reads the tool's own `describe` output and asserts the bundle calls the same eleven method names, the same task lanes and the same lock slots. If either side drifts, the test fails rather than a user's trial.
+`contract.test.ts` reads the tool's own `describe` output and asserts the bundle calls the same eleven method names, the same task lanes and the same lock slots, and that the minted tool id agrees across all four files that carry it. If either side drifts, the test fails rather than a user's trial.
 
 ---
 
@@ -277,13 +297,30 @@ cd app && anna-app validate --strict --bundle ui/dist
 
 ### 1. Swap the development tool id
 
-The project ships with `tool-dev-assay`, the synthetic id `anna-app init` generates. Mint a real one:
+The project ships with `tool-dev-assay`, the synthetic id `anna-app init` generates so the app runs offline. Anna mints the real one for your account, and the **same string has to appear in four places**. Forgetting any one of them produces a Stopped card or a silent `tools.invoke` timeout, with no error at build time.
 
-1. Go to `https://anna.partners/executa`, My Tools, Create Tool, Mint.
-2. Put the minted string in all three places, they must match exactly:
-   - `app/executas/assay-core/executa.json` → `tool_id`
-   - `app/manifest.json` → `required_executas[0].tool_id`
-   - `app/manifest.json` → `ui.host_api.tools[0]` → `required:<minted id>`
+Do not hand-edit the four files. Use the script:
+
+```bash
+cd app
+
+node scripts/set-tool-id.mjs status
+node scripts/set-tool-id.mjs apply --tool tool-<handle>-assay-<uniq>
+node scripts/set-tool-id.mjs status
+```
+
+The four anchors it writes:
+
+| # | File | Position |
+|---|---|---|
+| 1 | `app/executas/assay-core/executa.json` | `tool_id`, read by the CLI **and by the plugin itself at startup** |
+| 2 | `app/manifest.json` | `required_executas[0].tool_id` |
+| 3 | `app/manifest.json` | `ui.host_api.tools[0]`, with its `required:` prefix |
+| 4 | `app/ui/src/lib/host.ts` | the `TOOL_ID` constant the bundle invokes through |
+
+The plugin reads anchor 1 itself, so `describe.name` can never drift from the file the CLI launches it from. `app/ui/test/contract.test.ts` asserts all four agree, which turns the silent failure into a failed test suite.
+
+To put the placeholder back before committing a change, `node scripts/set-tool-id.mjs reset`.
 
 ### 2. Log in and set your handle
 
@@ -295,7 +332,8 @@ anna-app account set-handle <your-handle>
 ### 3. Validate and push
 
 ```bash
-cd app
+cd app/executas/assay-core && npm run build   # the plugin reads its id at startup
+cd ../
 anna-app validate --strict --bundle ui/dist
 anna-app apps push --bundle-dir ui/dist
 anna-app apps publish --bump patch --bundle-dir ui/dist
@@ -440,7 +478,7 @@ Everything the four planning documents ask for is built. Six decisions differ, e
 
 **1. The seven bench assets are coded SVG, not photography.** `FRONTEND_SPEC` 14 briefs seven photographic assets, pulled from stock or generated. This build has no image generation available and no licensed photo source, so the Assay Bench series is drawn as original SVG on the same palette: cool grey bench, ink shadows, one red indicator, no warm cream, no logos, no people. They are on-palette, deterministic, tiny, and licence-clean. Replacing them with graded photography is a drop-in swap: the files are referenced by path and the aspect ratios already match the brief.
 
-**2. `tool_id` is the development placeholder.** `tool-dev-assay` is what `anna-app init` generates so the app runs locally. Publishing needs a minted id, in three places, listed above. The app cannot be published from a repository that does not have your account.
+**2. `tool_id` is the development placeholder, and a script keeps it consistent.** `tool-dev-assay` is what `anna-app init` generates so the app runs offline. The real id is minted against your account, and the platform requires it in four places at once. Rather than document four manual edits and hope, `app/scripts/set-tool-id.mjs` writes all four atomically, the plugin reads its own id from the discovery file so `describe.name` cannot drift, and the contract test fails the suite if the four disagree. Publishing still needs your account.
 
 **3. The anatomy and metrics sections ship unbound.** The spec is explicit that every number traces to a recorded trial and that an unbackable card is removed. With no account and no keys, no trial can be recorded from here, so the corpus is empty and the sections render their empty state. This is the spec's own rule applied honestly, not a gap. The procedure to bind it is in [Binding the landing page](#binding-the-landing-page-to-a-real-trial).
 

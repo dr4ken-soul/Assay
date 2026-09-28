@@ -20,6 +20,8 @@
  *   policy_export      the policy as a JSON string
  */
 
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { logLine, setForwardHandler, setInvokeHandler, startTransport, type InvokeContext } from './rpc.js'
 import { CREDENTIAL_SCHEMA, listRoster } from './roster.js'
 import { RateLimitError, startTrial, trialStatus } from './trial.js'
@@ -29,9 +31,41 @@ import { loadPolicy, loadTrial, toSummary, trialIndex } from './store.js'
 import type { Letter, TrialRecord } from './types.js'
 import { TASK_TYPES } from './types.js'
 
+/**
+ * The tool id, read from the sibling `executa.json` when it is on disk.
+ *
+ * The platform mints the id and it is the same string in four places: the CLI
+ * discovery file, `describe.name`, `manifest.required_executas` and
+ * `ui.host_api.tools`. Reading the discovery file here means the plugin can
+ * never disagree with the file the CLI launches it from, which is the failure
+ * mode that produces a Stopped card and a silent `tools.invoke` timeout.
+ * @returns The tool id, or the built-in default when the file is not readable.
+ */
+function resolveToolId(): string {
+  const candidates = [
+    new URL('../executa.json', import.meta.url).pathname,
+    join(process.cwd(), 'executa.json'),
+  ]
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(readFileSync(candidate, 'utf8')) as { tool_id?: string }
+      if (typeof parsed.tool_id === 'string' && parsed.tool_id.length > 0) return parsed.tool_id
+    } catch {
+      /* try the next candidate */
+    }
+  }
+  return DEFAULT_TOOL_ID
+}
+
+/** The built-in tool id, used only when `executa.json` is not readable. */
+const DEFAULT_TOOL_ID = 'tool-dev-assay'
+
+/** The tool id this process is running as. */
+const TOOL_ID = resolveToolId()
+
 /** The plugin manifest returned by `describe`. */
 const MANIFEST = {
-  name: 'assay-core',
+  name: TOOL_ID,
   display_name: 'Assay',
   version: '0.1.0',
   description:
@@ -144,6 +178,7 @@ function health(): unknown {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     version: '0.1.0',
+    tool_id: TOOL_ID,
     tools_count: MANIFEST.tools.length,
   }
 }

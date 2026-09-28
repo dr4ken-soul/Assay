@@ -8,7 +8,7 @@
  */
 
 import { execFileSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -81,6 +81,34 @@ describe('the app manifest', () => {
 
   it('points the bundle entry at the built index', () => {
     expect(manifest.ui.bundle.entry).toBe('index.html')
+  })
+})
+
+describe('the tool id is wired identically everywhere', () => {
+  it('agrees between the discovery file, the manifest and the bundle', () => {
+    const discovery = JSON.parse(
+      execFileSync(process.execPath, [
+        '-e',
+        `process.stdout.write(require('fs').readFileSync(process.argv[1],'utf8'))`,
+        join(repoRoot, 'app', 'executas', 'assay-core', 'executa.json'),
+      ]).toString(),
+    ) as { tool_id: string }
+
+    const fromBundle = readFileSync(join(repoRoot, 'app', 'ui', 'src', 'lib', 'host.ts'), 'utf8').match(
+      /export const TOOL_ID = '([^']+)'/,
+    )?.[1]
+
+    expect(discovery.tool_id).toBe(TOOL_ID)
+    expect(manifest.required_executas[0].tool_id).toBe(TOOL_ID)
+    expect(manifest.ui.host_api.tools[0]).toBe(`required:${TOOL_ID}`)
+    expect(fromBundle).toBe(TOOL_ID)
+  })
+
+  it('agrees with the id the running plugin reports through describe', () => {
+    // The plugin reads its own executa.json at startup, so describe.name and the
+    // discovery file cannot drift. This asserts that wiring actually works.
+    const tool = readToolManifest()
+    expect(tool.name).toBe(TOOL_ID)
   })
 })
 

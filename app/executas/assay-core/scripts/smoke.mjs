@@ -9,6 +9,7 @@
  */
 
 import { spawn } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
@@ -62,7 +63,13 @@ if (!init.result?.client_capabilities?.sampling) throw new Error('plugin did not
 send({ jsonrpc: '2.0', id: 2, method: 'describe', params: {} })
 const described = await waitFor(frames, 2)
 const manifest = described.result
-if (manifest.name !== 'assay-core') throw new Error('describe did not return the bare manifest')
+// The platform mints the tool id and the plugin's describe name must equal it.
+// The plugin reads executa.json at startup, so this also proves that wiring.
+const declaredId = JSON.parse(readFileSync(join(here, '..', 'executa.json'), 'utf8')).tool_id
+if (manifest.name !== declaredId) {
+  throw new Error(`describe.name is ${manifest.name}, executa.json declares ${declaredId}`)
+}
+if (manifest.display_name !== 'Assay') throw new Error('display_name was lost')
 if (!Array.isArray(manifest.tools) || manifest.tools.length !== 11) throw new Error(`expected 11 tools, got ${manifest.tools?.length}`)
 if (!manifest.credentials?.length) throw new Error('the credential schema is missing, BYOK would silently no-op')
 if (!manifest.host_capabilities?.includes('llm.sample')) throw new Error('llm.sample is not declared')
