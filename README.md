@@ -163,7 +163,7 @@ assay/
 │       ├── src/components/         Icon Primitives Skeleton
 │       ├── src/lib/                host types format motion
 │       ├── src/styles/globals.css  the design system
-│       ├── test/                   37 tests, 9 of them the blind check
+│       ├── test/                   38 tests, 9 of them the blind check
 │       ├── scripts/blind-check.mjs
 │       └── dist/                   built, uploaded through the bundle pipeline
 ├── web/                            the landing page
@@ -279,7 +279,7 @@ cd app/executas/assay-core && npm test
 # protocol smoke: v2 handshake, describe, health, unknown method, no credential echo
 cd app/executas/assay-core && npm run smoke
 
-# 37 bundle tests, including the nine blind cases and the tool id contract
+# 38 bundle tests, including the nine blind cases, the tool id contract and the version contract
 cd app/ui && npm test
 
 # the blind check on its own: static scan plus the DOM suite
@@ -300,16 +300,41 @@ cd app && anna-app validate --strict --bundle ui/dist
 | Thing | Value |
 |---|---|
 | Developer handle | `@dr4ken-soul` |
-| Executa | `tool-dr4ken-soul-assay-vzvwwcr5`, version 0.1.1, capabilities `llm.sample` + `aps.kv` synced |
-| App | `assay`, `app_id 351`, version **0.1.1** (`version_id 981`), status **draft** |
+| Executa | `tool-dr4ken-soul-assay-vzvwwcr5`, v**0.1.3**, visibility `app_bundled`, capabilities `llm.sample` + `aps.kv` |
+| Distribution | `binary`, **5 platform artifacts uploaded**, installable by other users |
+| App | `assay`, `app_id 351`, v**0.1.2** (`version_id 985`), status **draft** |
+| App pins | executa_version 591 = Executa v0.1.3 |
 | UI bundle | staged, `status: ready` |
+| Landing page | https://assay-o94w3l6he-psycho-projects.vercel.app |
 | Listing | not yet filled |
 | Review | not yet submitted |
 
-The app is deliberately **not** submitted and **not** released. Two gates are still shut, and both matter more than they look:
+The app is deliberately **not** released. `apps release` requires `APPROVED`, and only an admin review gets you there. That is the one gate left, and it is the correct one to be shut: a review that fails costs a round trip, and the honest sequence is fill the listing, submit, then release.
 
-1. **Release needs `APPROVED`.** Only an admin can move it there, through review. `apps release` on a draft is refused.
-2. **`distribution.active` is `local`.** A `local` Executa installs on the author's own machine and nowhere else. The app would work perfectly for you and fail for every other user.
+### Shipping the tool to other machines: done
+
+`distribution.active` is `binary` with five platform archives, so the Marketplace can install the tool for anyone. Executas at v0.1.0 to v0.1.2 shipped a `local` distribution, which installs on the author's machine only; v0.1.3 is the first version another user can actually install.
+
+The plugin is plain JavaScript with zero runtime dependencies, so one build serves every target and the five archives are byte-identical:
+
+```bash
+cd app/executas/assay-core
+npm run build
+npm run artifacts        # writes build/assay-core-<platform>.zip
+anna-app executa publish --bump patch
+```
+
+| Platform key | Archive |
+|---|---|
+| `windows-x86_64` | `build/assay-core-windows-x86_64.zip` |
+| `darwin-arm64` | `build/assay-core-darwin-arm64.zip` |
+| `darwin-x86_64` | `build/assay-core-darwin-x86_64.zip` |
+| `linux-x86_64` | `build/assay-core-linux-x86_64.zip` |
+| `linux-arm64` | `build/assay-core-linux-arm64.zip` |
+
+The archives are written by `scripts/lib/zip.mjs` rather than by `Compress-Archive` or a system `zip`, because those emit backslash entry names on Windows, and the platform extracts on Linux and macOS where the declared `entrypoint: dist/index.js` would not resolve. That was a real bug, caught by extracting an archive and running the entrypoint before shipping it.
+
+`build/` is gitignored. Rebuild it rather than committing 32 KB of the same five times.
 
 ### Shipping the tool to other machines
 
@@ -349,8 +374,8 @@ The tool comes first, then the app. Steps 1 to 6 are done.
 | 2 | `anna-app login`, then `anna-app account set-handle <handle>` | done, `@dr4ken-soul` |
 | 3 | Create the Executa and Mint its `tool_id` | done, via `anna-app executa publish` |
 | 4 | Wire the minted id into the repo | done, `set-tool-id.mjs apply` |
-| 5 | Publish the Executa with a real distribution profile | **not done**, see above |
-| 6 | Create and version the App | done, v0.1.1 draft |
+| 5 | Publish the Executa with a real distribution profile | done, binary, 5 platforms |
+| 6 | Create and version the App | done, v0.1.2 draft |
 | 7 | Fill the listing, submit for review, then release | not done |
 
 Two things the mint flow insists on that catch people out: the **Tool ID field is read-only and Create stays disabled until you press the Mint button**, and a draft that is never committed **expires after 24 hours**.
@@ -462,17 +487,27 @@ export const CORPUS: Corpus = {
 
 ## Deploying the landing page
 
+Live at **https://assay-o94w3l6he-psycho-projects.vercel.app**.
+
 ```bash
 cd web
-npx vercel
+vercel --prod --yes --name assay
 ```
 
-Or any Next.js host. `npm run build` produces a static page, no server runtime required.
+Or any Next.js host. `npm run build` produces a static page, no server runtime required. `web/.vercelignore` keeps `node_modules` and `.next` out of the upload.
 
-Before deploying, replace these two lines:
+Two things that will bite you on a first deploy, both hit here:
 
-- `web/src/app/layout.tsx` → `metadataBase`, currently a placeholder
-- the `MARKETPLACE` link in `web/src/components/sections/Footer.tsx`, currently the platform root rather than your listing URL
+**Deployment Protection is on by default** on new Vercel projects, which serves a login page to every visitor. A public landing page behind a login is not public. The CLI has no flag for it, so it is turned off through the API:
+
+```bash
+echo '{ "ssoProtection": null }' > patch.json
+vercel api /v9/projects/assay -X PATCH --input patch.json
+```
+
+**Check the scope.** `vercel --name` created the project under the active team, not the personal account, which is why the URL carries the team slug.
+
+Before the next deploy, replace `metadataBase` in `web/src/app/layout.tsx` with the deployed origin, and point the `MARKETPLACE` link in `web/src/components/sections/Footer.tsx` at the published listing once there is one.
 
 ---
 
@@ -497,10 +532,10 @@ Not in the MVP, and not oversights:
 - [x] Functional completeness: declared task performed end to end
 - [x] Reliability: failed providers degrade to `FAILED` columns, no substitution
 - [x] Public repository with a complete README
-- [ ] Executa published with a real distribution profile, installable on a second machine
+- [x] Executa published as `binary` with 5 platform artifacts, installable by other users
 - [x] Anna account created, developer profile activated, handle `@dr4ken-soul`
-- [x] Tool id minted and wired, Executa published at v0.1.1
-- [x] App created, `app_id 351`, version 0.1.1 cut, UI bundle staged ready
+- [x] Tool id minted and wired, Executa published at v0.1.3, visibility `app_bundled`
+- [x] App created, `app_id 351`, version 0.1.2 cut, UI bundle staged ready, pins Executa v0.1.3
 - [ ] Listing submitted with the declared primary function
 - [ ] Installed and verified from a fresh Anna account
 - [ ] Three real trials recorded, one all keys valid, one with an invalid key, one sampling only

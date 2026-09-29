@@ -4,6 +4,8 @@ node_modules/
 # build output
 # the UI bundle is uploaded through the bundle pipeline, it is not committed
 app/ui/dist/
+# the distribution archives are built by npm run artifacts, never committed
+app/executas/assay-core/build/
 web/.next/
 web/out/
 

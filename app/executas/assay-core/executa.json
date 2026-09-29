@@ -1,14 +1,14 @@
 {
   "slug": "assay",
   "name": "assay",
-  "version": "0.1.0",
+  "version": "0.1.3",
   "executa_type": "tool",
   "type": "node",
   "tool_id": "tool-dr4ken-soul-assay-vzvwwcr5",
   "description": "Blind trial bench for model selection. Runs one workload across every model on the bench in parallel with the names shuffled to letters, scores the anonymised outputs with a blind examiner, measures token cost and latency, then reveals which model earned which column and folds the crown into a personal routing policy.",
   "entry": "dist/index.js",
   "distribution": {
-    "active": "local",
+    "active": "binary",
     "profiles": {
       "local": {
         "type": "local",
@@ -31,5 +31,5 @@
       }
     }
   },
-  "_comment": "Swap tool_id for the minted id: node ../../scripts/set-tool-id.mjs apply --tool <minted-id>. distribution.profiles.local installs on your own machine only and is the dev loop. distribution.profiles.binary is what other users install and is what the Marketplace needs, but its artifacts under build/ do not exist yet, so local is active until they are built. Do not submit for review while local is the active profile."
+  "_comment": "Swap tool_id for the minted id: node ../../scripts/set-tool-id.mjs apply --tool <minted-id>. distribution.active is binary because the Marketplace installs the tool for other users, and local would only ever install on the author's own machine. The archives are built by: npm run artifacts. Use --profile local to publish a dev-only build for your own Agent."
 }

@@ -67,11 +67,38 @@ const DEFAULT_TOOL_ID = 'tool-dev-assay'
 /** The tool id this process is running as. */
 const TOOL_ID = resolveToolId()
 
+/**
+ * The plugin version, read from the sibling `package.json`.
+ *
+ * It is a literal in neither the manifest nor `health`, because a hardcoded
+ * version silently drifts from the version the platform has frozen and then
+ * reports the wrong one in execution traces.
+ * @returns The SemVer string, or `0.0.0` when the file is unreadable.
+ */
+function resolveVersion(): string {
+  const candidates = [
+    fileURLToPath(new URL('../package.json', import.meta.url)),
+    join(process.cwd(), 'package.json'),
+  ]
+  for (const candidate of candidates) {
+    try {
+      const parsed = JSON.parse(readFileSync(candidate, 'utf8')) as { version?: string }
+      if (typeof parsed.version === 'string' && parsed.version.length > 0) return parsed.version
+    } catch {
+      /* try the next candidate */
+    }
+  }
+  return '0.0.0'
+}
+
+/** The version this plugin reports through describe and health. */
+const VERSION = resolveVersion()
+
 /** The plugin manifest returned by `describe`. */
 const MANIFEST = {
   name: TOOL_ID,
   display_name: 'Assay',
-  version: '0.1.0',
+  version: VERSION,
   description:
     'Blind trial bench for model selection. Runs one workload across every model on the bench in parallel with the names shuffled to letters, scores the anonymised outputs with a blind examiner, measures token cost and latency, then reveals which model earned which column and folds the crown into a personal routing policy.',
   author: 'Assay',
@@ -181,7 +208,7 @@ function health(): unknown {
   return {
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    version: '0.1.0',
+    version: VERSION,
     tool_id: TOOL_ID,
     tools_count: MANIFEST.tools.length,
   }

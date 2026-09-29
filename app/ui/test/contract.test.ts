@@ -35,6 +35,7 @@ const manifest = JSON.parse(
  */
 function readToolManifest(): {
   name: string
+  version: string
   tools: Array<{ name: string; parameters: Array<{ name: string; type: string; items?: unknown; items_type?: string }> }>
   credentials: Array<{ name: string; required: boolean; sensitive: boolean }>
   host_capabilities: string[]
@@ -112,6 +113,31 @@ describe('the tool id is wired identically everywhere', () => {
   })
 })
 
+describe('the version is declared once', () => {
+  it('agrees across package.json, executa.json and the running plugin', () => {
+    const pkg = JSON.parse(
+      execFileSync(process.execPath, [
+        '-e',
+        `process.stdout.write(require('fs').readFileSync(process.argv[1],'utf8'))`,
+        join(repoRoot, 'app', 'executas', 'assay-core', 'package.json'),
+      ]).toString(),
+    ) as { version: string }
+
+    const discovery = JSON.parse(
+      execFileSync(process.execPath, [
+        '-e',
+        `process.stdout.write(require('fs').readFileSync(process.argv[1],'utf8'))`,
+        join(repoRoot, 'app', 'executas', 'assay-core', 'executa.json'),
+      ]).toString(),
+    ) as { version: string }
+
+    // describe and health read package.json at startup. A hardcoded literal
+    // drifts from the version the platform has frozen and then reports the
+    // wrong one in execution traces.
+    expect(readToolManifest().version).toBe(pkg.version)
+    expect(discovery.version).toBe(pkg.version)
+  })
+})
 describe('the tool manifest', () => {
   const tool = readToolManifest()
 

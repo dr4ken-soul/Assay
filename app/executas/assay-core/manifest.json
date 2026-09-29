@@ -1,7 +1,7 @@
 {
     "name":  "tool-dr4ken-soul-assay-vzvwwcr5",
     "display_name":  "Assay",
-    "version":  "0.1.0",
+    "version":  "0.1.3",
     "description":  "Blind trial bench for model selection. Runs one workload across every model on the bench in parallel with the names shuffled to letters, scores the anonymised outputs with a blind examiner, measures token cost and latency, then reveals which model earned which column and folds the crown into a personal routing policy.",
     "author":  "Assay",
     "host_capabilities":  [
