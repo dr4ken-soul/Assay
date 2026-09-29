@@ -295,25 +295,67 @@ cd app && anna-app validate --strict --bundle ui/dist
 
 ## Publishing to Anna
 
+### Current state
+
+| Thing | Value |
+|---|---|
+| Developer handle | `@dr4ken-soul` |
+| Executa | `tool-dr4ken-soul-assay-vzvwwcr5`, version 0.1.1, capabilities `llm.sample` + `aps.kv` synced |
+| App | `assay`, `app_id 351`, version **0.1.1** (`version_id 981`), status **draft** |
+| UI bundle | staged, `status: ready` |
+| Listing | not yet filled |
+| Review | not yet submitted |
+
+The app is deliberately **not** submitted and **not** released. Two gates are still shut, and both matter more than they look:
+
+1. **Release needs `APPROVED`.** Only an admin can move it there, through review. `apps release` on a draft is refused.
+2. **`distribution.active` is `local`.** A `local` Executa installs on the author's own machine and nowhere else. The app would work perfectly for you and fail for every other user.
+
+### Shipping the tool to other machines
+
+This is the one piece of real work left before submission. The Marketplace installs bundled Executas, so the tool has to be distributable, and `local` is not.
+
+`executa.json` already declares the shape. `distribution.profiles.binary` covers five platforms and points at `build/assay-core-<platform>.zip`. Those archives do not exist yet.
+
+| Platform key | Needs |
+|---|---|
+| `windows-x86_64` | `build/assay-core-windows-x86_64.zip` |
+| `darwin-arm64` | `build/assay-core-darwin-arm64.zip` |
+| `darwin-x86_64` | `build/assay-core-darwin-x86_64.zip` |
+| `linux-x86_64` | `build/assay-core-linux-x86_64.zip` |
+| `linux-arm64` | `build/assay-core-linux-arm64.zip` |
+
+Each archive holds the compiled `dist/`, the `package.json` and a Node runtime, with `entrypoint: dist/index.js`. Node's `--experimental-sea-config` single-file build, or a zip that bundles a portable Node per platform, both work. The reference example in `anna-executa-examples` ships a GitHub Actions workflow that builds every platform on tag, and that is the shape to copy.
+
+Once the archives exist:
+
+```bash
+cd app/executas/assay-core
+anna-app executa publish --bump patch --profile binary
+anna-app executa upload-binaries          # or let CI push it with --oidc
+```
+
+Then set `"active": "binary"` in `executa.json`, re-publish the app, install it from a **fresh Anna account**, and only then submit for review. A tool that cannot install on someone else's machine will not survive review, and finding that out after submitting costs a round trip.
+
 ### The order matters, and the Console encourages the wrong one
 
-The Developer Console at https://anna.partners/developer has a big **New App** button, and it is tempting to press it. **Not yet.** Your app manifest references a `tool_id`, and both the validator and the publish precheck resolve it against the **live Executa catalogue**. If the tool does not exist yet, the app version will not validate and the submit-review precheck will fail.
+The Developer Console at https://anna.partners/developer has a big **New App** button, and it is tempting to press it. **Not first.** Your app manifest references a `tool_id`, and both the validator and the publish precheck resolve it against the **live Executa catalogue**. If the tool does not exist yet, the app version will not validate.
 
-The tool comes first, then the app.
+The tool comes first, then the app. Steps 1 to 6 are done.
 
 | # | Do this | Where |
 |---|---|---|
-| 1 | Activate the developer profile | done, you are here |
-| 2 | `anna-app login`, then `anna-app account set-handle <handle>` | terminal, the handle is **required before your first app** |
-| 3 | Create the Executa and **Mint** its `tool_id` | https://anna.partners/executa |
-| 4 | Wire the minted id into the repo | `node scripts/set-tool-id.mjs apply --tool <id>` |
-| 5 | Publish the Executa, visibility `private` or `app_bundled` | https://anna.partners/executa |
-| 6 | Create and version the App | `anna-app apps publish`, or the Console |
-| 7 | Fill the listing, then submit for review | Console, Listing and Versions tabs |
+| 1 | Activate the developer profile | done |
+| 2 | `anna-app login`, then `anna-app account set-handle <handle>` | done, `@dr4ken-soul` |
+| 3 | Create the Executa and Mint its `tool_id` | done, via `anna-app executa publish` |
+| 4 | Wire the minted id into the repo | done, `set-tool-id.mjs apply` |
+| 5 | Publish the Executa with a real distribution profile | **not done**, see above |
+| 6 | Create and version the App | done, v0.1.1 draft |
+| 7 | Fill the listing, submit for review, then release | not done |
 
-Two things the mint step insists on that catch people out: the **Tool ID field is read-only and the Create button stays disabled until you press the Mint button**, and a draft that is never committed **expires after 24 hours**. Mint early, and even if you walk away the id is yours for a day.
+Two things the mint flow insists on that catch people out: the **Tool ID field is read-only and Create stays disabled until you press the Mint button**, and a draft that is never committed **expires after 24 hours**.
 
-Do not flip the tool to `public` yet. Set it `private` while you test, or `app_bundled` if it is only ever meant to ship inside Assay. The docs are explicit that promoting too early is the common cause of a failed install leaving a dead tool behind.
+Do not flip the tool to `public` yet. `private` or `app_bundled` is right while you test. The docs are explicit that promoting too early is the common cause of a failed install leaving a dead tool behind, and `public` also requires a paid plan.
 
 ### 1. Swap the development tool id
 
@@ -455,9 +497,10 @@ Not in the MVP, and not oversights:
 - [x] Functional completeness: declared task performed end to end
 - [x] Reliability: failed providers degrade to `FAILED` columns, no substitution
 - [x] Public repository with a complete README
-- [ ] Anna Marketplace approval and publication
-- [ ] Anna account created, developer profile activated
-- [ ] Tool id minted, `anna-app apps publish` run
+- [ ] Executa published with a real distribution profile, installable on a second machine
+- [x] Anna account created, developer profile activated, handle `@dr4ken-soul`
+- [x] Tool id minted and wired, Executa published at v0.1.1
+- [x] App created, `app_id 351`, version 0.1.1 cut, UI bundle staged ready
 - [ ] Listing submitted with the declared primary function
 - [ ] Installed and verified from a fresh Anna account
 - [ ] Three real trials recorded, one all keys valid, one with an invalid key, one sampling only

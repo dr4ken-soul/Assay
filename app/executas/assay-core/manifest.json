@@ -1,0 +1,243 @@
+{
+    "name":  "tool-dr4ken-soul-assay-vzvwwcr5",
+    "display_name":  "Assay",
+    "version":  "0.1.0",
+    "description":  "Blind trial bench for model selection. Runs one workload across every model on the bench in parallel with the names shuffled to letters, scores the anonymised outputs with a blind examiner, measures token cost and latency, then reveals which model earned which column and folds the crown into a personal routing policy.",
+    "author":  "Assay",
+    "host_capabilities":  [
+                              "llm.sample",
+                              "aps.kv"
+                          ],
+    "runtime":  {
+                    "type":  "npm"
+                },
+    "credentials":  [
+                        {
+                            "name":  "OPENAI_API_KEY",
+                            "display_name":  "OpenAI API key",
+                            "description":  "Runs OpenAI models on your own billing.",
+                            "required":  false,
+                            "sensitive":  true
+                        },
+                        {
+                            "name":  "ANTHROPIC_API_KEY",
+                            "display_name":  "Anthropic API key",
+                            "description":  "Runs Claude models on your own billing.",
+                            "required":  false,
+                            "sensitive":  true
+                        },
+                        {
+                            "name":  "GOOGLE_API_KEY",
+                            "display_name":  "Google AI API key",
+                            "description":  "Runs Gemini models on your own billing.",
+                            "required":  false,
+                            "sensitive":  true
+                        },
+                        {
+                            "name":  "OPENROUTER_API_KEY",
+                            "display_name":  "OpenRouter API key",
+                            "description":  "Routes through the OpenRouter catalogue.",
+                            "required":  false,
+                            "sensitive":  true
+                        },
+                        {
+                            "name":  "XAI_API_KEY",
+                            "display_name":  "xAI API key",
+                            "description":  "Runs Grok models on your own billing.",
+                            "required":  false,
+                            "sensitive":  true
+                        },
+                        {
+                            "name":  "MISTRAL_API_KEY",
+                            "display_name":  "Mistral API key",
+                            "description":  "Runs Mistral models on your own billing.",
+                            "required":  false,
+                            "sensitive":  true
+                        },
+                        {
+                            "name":  "GROQ_API_KEY",
+                            "display_name":  "Groq API key",
+                            "description":  "Runs Llama models on your own billing.",
+                            "required":  false,
+                            "sensitive":  true
+                        },
+                        {
+                            "name":  "DEEPSEEK_API_KEY",
+                            "display_name":  "DeepSeek API key",
+                            "description":  "Runs DeepSeek models on your own billing.",
+                            "required":  false,
+                            "sensitive":  true
+                        }
+                    ],
+    "tools":  [
+                  {
+                      "name":  "roster_list",
+                      "description":  "List the models this user can put on trial right now, each with a boolean flag for whether a provider key is present. Never returns key material.",
+                      "parameters":  [
+
+                                     ],
+                      "timeout":  15000
+                  },
+                  {
+                      "name":  "trial_start",
+                      "description":  "Start a blind trial. Shuffles the roster, assigns MODEL A, MODEL B and so on, seals the mapping, then runs every column in parallel. Returns the trial id and the letters in run order. Costs real credits, six trials per hour.",
+                      "parameters":  [
+                                         {
+                                             "name":  "workload",
+                                             "type":  "string",
+                                             "description":  "The real workload to run, task text plus any input.",
+                                             "required":  true
+                                         },
+                                         {
+                                             "name":  "roster_ids",
+                                             "type":  "array",
+                                             "items":  {
+                                                           "type":  "string"
+                                                       },
+                                             "items_type":  "string",
+                                             "description":  "Roster identifiers from roster_list, at least two.",
+                                             "required":  true
+                                         }
+                                     ],
+                      "timeout":  30000
+                  },
+                  {
+                      "name":  "trial_status",
+                      "description":  "Read live per-column state and timers for a running trial. Never returns model names.",
+                      "parameters":  [
+                                         {
+                                             "name":  "trial_id",
+                                             "type":  "string",
+                                             "description":  "The trial id from trial_start.",
+                                             "required":  true
+                                         }
+                                     ],
+                      "timeout":  15000
+                  },
+                  {
+                      "name":  "trial_verdict",
+                      "description":  "Score the anonymised outputs with the blind examiner and return the verdict: rubric scores, token cost, latency, value ratio and divergence notes. The examiner never receives model names.",
+                      "parameters":  [
+                                         {
+                                             "name":  "trial_id",
+                                             "type":  "string",
+                                             "description":  "The trial id to examine.",
+                                             "required":  true
+                                         }
+                                     ],
+                      "timeout":  180000
+                  },
+                  {
+                      "name":  "trial_crown",
+                      "description":  "Record the user\u0027s blind choice for a trial, either a letter or the tie. Writes the trial record to storage and shifts the routing policy. Refuses after the blind has been lifted.",
+                      "parameters":  [
+                                         {
+                                             "name":  "trial_id",
+                                             "type":  "string",
+                                             "description":  "The trial id to crown.",
+                                             "required":  true
+                                         },
+                                         {
+                                             "name":  "letter",
+                                             "type":  "string",
+                                             "description":  "The winning column, for example MODEL A, or the word tie.",
+                                             "required":  true
+                                         }
+                                     ],
+                      "timeout":  30000
+                  },
+                  {
+                      "name":  "trial_unblind",
+                      "description":  "Reveal the letter to model mapping for a crowned trial. Refuses before a crown, so the choice stays unbiased.",
+                      "parameters":  [
+                                         {
+                                             "name":  "trial_id",
+                                             "type":  "string",
+                                             "description":  "The trial id to reveal.",
+                                             "required":  true
+                                         }
+                                     ],
+                      "timeout":  15000
+                  },
+                  {
+                      "name":  "history_list",
+                      "description":  "List the user trial ledger, newest first, with a cap on the page size.",
+                      "parameters":  [
+                                         {
+                                             "name":  "limit",
+                                             "type":  "integer",
+                                             "description":  "How many rows to return, 1 to 200.",
+                                             "required":  false,
+                                             "default":  50
+                                         }
+                                     ],
+                      "timeout":  20000
+                  },
+                  {
+                      "name":  "history_get",
+                      "description":  "Read one full trial record from the ledger. Names are only present once the trial is unblinded.",
+                      "parameters":  [
+                                         {
+                                             "name":  "trial_id",
+                                             "type":  "string",
+                                             "description":  "The trial id to read.",
+                                             "required":  true
+                                         }
+                                     ],
+                      "timeout":  15000
+                  },
+                  {
+                      "name":  "policy_get",
+                      "description":  "Read the routing policy: per-model weights, computed rank, per-task-type locks and version.",
+                      "parameters":  [
+
+                                     ],
+                      "timeout":  15000
+                  },
+                  {
+                      "name":  "policy_set_lock",
+                      "description":  "Lock or unlock one routing slot for one task type. Pass a null model to unlock. A lock always wins over the computed rank.",
+                      "parameters":  [
+                                         {
+                                             "name":  "task",
+                                             "type":  "string",
+                                             "description":  "One of draft, rewrite, extract, code, analyse.",
+                                             "required":  true,
+                                             "enum":  [
+                                                          "draft",
+                                                          "rewrite",
+                                                          "extract",
+                                                          "code",
+                                                          "analyse"
+                                                      ]
+                                         },
+                                         {
+                                             "name":  "slot",
+                                             "type":  "string",
+                                             "description":  "One of default, fallback, budget.",
+                                             "required":  true,
+                                             "enum":  [
+                                                          "default",
+                                                          "fallback",
+                                                          "budget"
+                                                      ]
+                                         },
+                                         {
+                                             "name":  "model_id",
+                                             "type":  "string",
+                                             "description":  "The model to lock, or null to unlock.",
+                                             "required":  false
+                                         }
+                                     ],
+                      "timeout":  15000
+                  },
+                  {
+                      "name":  "policy_export",
+                      "description":  "Export the routing policy as a JSON string, ready to drop into a user own agents and scripts.",
+                      "parameters":  [
+
+                                     ],
+                      "timeout":  15000
+                  }
+              ]
+}

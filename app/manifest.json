@@ -2,7 +2,7 @@
   "schema": 2,
   "required_executas": [
     {
-      "tool_id": "tool-dev-assay",
+      "tool_id": "tool-dr4ken-soul-assay-vzvwwcr5",
       "min_version": "0.1.0",
       "version": "latest"
     }
@@ -11,9 +11,6 @@
   "host_capabilities": ["llm.sample", "aps.kv"],
   "permissions": [
     "tools.invoke",
-    "storage.get",
-    "storage.set",
-    "storage.list",
     "ui.svg"
   ],
   "tags": ["developer-tools", "llm", "evaluation", "benchmarks", "model-routing", "byok"],
@@ -70,7 +67,7 @@
       }
     ],
     "host_api": {
-      "tools": ["required:tool-dev-assay"],
+      "tools": ["required:tool-dr4ken-soul-assay-vzvwwcr5"],
       "storage": ["get", "set", "list", "delete"],
       "window": ["set_title", "open_view", "close", "focus", "resize"],
       "llm": [],

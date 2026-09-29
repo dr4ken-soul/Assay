@@ -22,6 +22,7 @@
 
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { logLine, setForwardHandler, setInvokeHandler, startTransport, type InvokeContext } from './rpc.js'
 import { CREDENTIAL_SCHEMA, listRoster } from './roster.js'
 import { RateLimitError, startTrial, trialStatus } from './trial.js'
@@ -43,7 +44,10 @@ import { TASK_TYPES } from './types.js'
  */
 function resolveToolId(): string {
   const candidates = [
-    new URL('../executa.json', import.meta.url).pathname,
+    // fileURLToPath, not URL.pathname: pathname is percent-encoded and carries a
+    // leading slash on Windows, so readFileSync cannot open it and the lookup
+    // would silently fall through to the built-in default.
+    fileURLToPath(new URL('../executa.json', import.meta.url)),
     join(process.cwd(), 'executa.json'),
   ]
   for (const candidate of candidates) {

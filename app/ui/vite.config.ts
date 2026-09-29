@@ -27,5 +27,12 @@ export default defineConfig({
     globals: true,
     include: ['test/**/*.test.tsx', 'test/**/*.test.ts'],
     setupFiles: ['./test/setup.ts'],
+    // The suite swaps the host client through a module-level seam, and every
+    // file tears that down in afterEach. Running files concurrently lets one
+    // file's teardown null the client while another file is mid-render, which
+    // showed up as an intermittent ledger failure. One file at a time is worth
+    // the few seconds.
+    fileParallelism: false,
+    sequence: { concurrent: false },
   },
 })

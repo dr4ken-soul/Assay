@@ -26,7 +26,7 @@ import type {
 } from './types'
 
 /** The minted tool id, matching `manifest.ui.host_api.tools`. */
-export const TOOL_ID = 'tool-dev-assay'
+export const TOOL_ID = 'tool-dr4ken-soul-assay-vzvwwcr5'
 
 /** One method on the Executa. */
 type ToolMethod =

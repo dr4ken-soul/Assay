@@ -23,6 +23,9 @@ web/out/
 # harness recordings and traces
 *.jsonl
 
+# the local publish identity cache, per-account
+.anna/
+
 # editor and os
 .DS_Store
 Thumbs.db
