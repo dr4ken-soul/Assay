@@ -1,5 +1,10 @@
+#!/usr/bin/env node
 /**
  * assay-core, the Assay Executa.
+ *
+ * The shebang above is load bearing. The distribution archives declare
+ * `entrypoint: dist/index.js` and the platform execs that path directly, so
+ * without it the OS has no interpreter and the tool installs but never runs.
  *
  * One bundled tool, eleven methods. The UI never calls a model directly: it
  * calls one of these methods through the host API and this process does the

@@ -50,7 +50,9 @@ export function crc32(buffer) {
 
 /**
  * Builds a ZIP archive in memory.
- * @param entries One record per file, with a forward-slash path.
+ * @param entries One record per file, with a forward-slash path. A record may
+ *   carry `executable: true` to store mode 0755, which is what the declared
+ *   entrypoint needs so the platform can exec it.
  * @returns The archive bytes.
  */
 export function buildZip(entries) {
@@ -100,10 +102,12 @@ export function buildZip(entries) {
     central.writeUInt16LE(0, 32)
     central.writeUInt16LE(0, 34)
     central.writeUInt16LE(0, 36)
-    // Unix mode 0644 in the high 16 bits. The shift is coerced back to
-    // unsigned, because 0o100644 << 16 overflows into a negative int in JS
-    // and writeUInt32LE refuses negative values.
-    central.writeUInt32LE((0o100644 << 16) >>> 0, 38)
+    // Unix mode in the high 16 bits. 0755 for the entrypoint so the platform
+    // can exec it, 0644 for everything else. The shift is coerced back to
+    // unsigned, because the value overflows into a negative int in JS and
+    // writeUInt32LE refuses negative values.
+    const mode = entry.executable ? 0o100755 : 0o100644
+    central.writeUInt32LE((mode << 16) >>> 0, 38)
     central.writeUInt32LE(offset, 42)
 
     centrals.push(central, nameBytes)

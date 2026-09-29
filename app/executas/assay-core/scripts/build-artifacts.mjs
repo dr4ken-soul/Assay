@@ -77,6 +77,9 @@ const files = [
     // Always forward slashes, whatever the builder's platform separator is.
     path: relative(ROOT, full).split(sep).join('/'),
     data: readFileSync(full),
+    // The declared entrypoint is exec'd by the platform, so it alone needs the
+    // executable bit and a shebang.
+    executable: relative(ROOT, full).split(sep).join('/') === 'dist/index.js',
   })),
   {
     path: 'package.json',
