@@ -163,7 +163,7 @@ assay/
 │       ├── src/components/         Icon Primitives Skeleton
 │       ├── src/lib/                host types format motion
 │       ├── src/styles/globals.css  the design system
-│       ├── test/                   38 tests, 9 of them the blind check
+│       ├── test/                   39 tests, 9 of them the blind check
 │       ├── scripts/blind-check.mjs
 │       └── dist/                   built, uploaded through the bundle pipeline
 ├── web/                            the landing page
@@ -279,7 +279,7 @@ cd app/executas/assay-core && npm test
 # protocol smoke: v2 handshake, describe, health, unknown method, no credential echo
 cd app/executas/assay-core && npm run smoke
 
-# 38 bundle tests, including the nine blind cases, the tool id contract and the version contract
+# 39 bundle tests, including the nine blind cases, the tool id contract, the version contract and the one-shot examiner guard
 cd app/ui && npm test
 
 # the blind check on its own: static scan plus the DOM suite
@@ -306,7 +306,7 @@ cd app && anna-app validate --strict --bundle ui/dist
 | App pins | executa_version 591 = Executa v0.1.3 |
 | UI bundle | staged, `status: ready` |
 | Landing page | https://assay-psycho-projects.vercel.app |
-| Listing | name, category, tagline synced. Description, logo and screenshots still to fill |
+| Listing | name, category, tagline synced. Description and screenshots still to fill |
 | Review | not yet submitted |
 
 The app is deliberately **not** released. `apps release` requires `APPROVED`, and only an admin review gets you there. That is the one gate left, and it is the correct one to be shut: a review that fails costs a round trip, and the honest sequence is fill the listing, submit, then release.

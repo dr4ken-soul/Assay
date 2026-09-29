@@ -14,6 +14,9 @@ import { Bench } from '../src/views/Bench'
 import { installHostClient } from '../src/lib/host'
 import { FORBIDDEN_BEFORE_UNBLIND, makeFakeHost, type FakeHost } from './fakeHost'
 
+/** The bench poll interval, mirrored from Bench.tsx. */
+const POLL_MS = 500
+
 /** The roster selection the setup state starts on. */
 const WORKLOAD = 'Summarise this incident in three lines for a paying customer.'
 
@@ -181,6 +184,23 @@ describe('the blind', () => {
     expect(note.textContent).toContain('Six trials an hour')
     expect(note.textContent).toContain('top of the hour')
     expect(host.calls.some((call) => call.method === 'trial_start')).toBe(true)
+  })
+
+  it('asks the examiner exactly once when it fails, never in a loop', async () => {
+    // One examiner failure must not become an unbounded stream of billed
+    // calls. The judge already re-asks internally, so the UI asks once.
+    host.fail('trial_verdict')
+    render(<Bench />)
+    await screen.findByTestId('bench-setup')
+    await startRun()
+    await screen.findByTestId('bench-running')
+    await waitFor(() => expect(screen.getByTestId('error-note')).toBeTruthy())
+
+    expect(host.calls.filter((call) => call.method === 'trial_verdict').length).toBe(1)
+
+    // Let several poll intervals elapse. The count must not move.
+    await new Promise((resolve) => setTimeout(resolve, POLL_MS * 6))
+    expect(host.calls.filter((call) => call.method === 'trial_verdict').length).toBe(1)
   })
 
   it('never logs or sends a model name to the unblind path before it is crowned', async () => {

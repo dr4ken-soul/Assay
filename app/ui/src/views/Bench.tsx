@@ -109,31 +109,41 @@ export function Bench() {
   }
 
   /**
-   * Polls the running trial and asks for the verdict once it has settled.
+   * Polls the running trial, then asks for the verdict exactly once it settles.
+   *
+   * The verdict is requested at most once per run. The examiner already re-asks
+   * internally on invalid JSON, so a second attempt from here would be retry
+   * theatre, and an unguarded loop turns one examiner failure into an unbounded
+   * stream of billed calls against the user's own quota.
+   *
    * @returns Nothing.
    */
   useEffect(() => {
     if (phase !== 'running' || !started) return undefined
 
     let cancelled = false
+    let verdictSettled = false
 
     const poll = async () => {
       try {
         const next = await trialStatus(started.trialId)
         if (cancelled) return
         setStatus(next)
-        if (next.state === 'settled') {
-          setBusy(true)
-          try {
-            const scored = await trialVerdict(started.trialId)
-            if (cancelled) return
-            setVerdict(scored)
-            setPhase('verdict')
-          } catch (caught) {
-            if (!cancelled) setError(readError(caught))
-          } finally {
-            if (!cancelled) setBusy(false)
-          }
+        if (next.state !== 'settled' || verdictSettled) return
+
+        // Claim the single attempt before awaiting, so a slow response cannot
+        // be joined by the next tick firing a second one.
+        verdictSettled = true
+        setBusy(true)
+        try {
+          const scored = await trialVerdict(started.trialId)
+          if (cancelled) return
+          setVerdict(scored)
+          setPhase('verdict')
+        } catch (caught) {
+          if (!cancelled) setError(readError(caught))
+        } finally {
+          if (!cancelled) setBusy(false)
         }
       } catch (caught) {
         if (!cancelled) setError(readError(caught))

@@ -46,8 +46,18 @@ let nextReverseId = 1;
 const pending = new Map();
 /** Per-invoke state the reverse calls need, set for the duration of a handler. */
 let activeContext = { credentials: {}, invokeId: null, samplingToken: null };
-/** Whether the host negotiated v2 and advertised sampling. */
-let samplingNegotiated = false;
+/**
+ * Whether sampling is believed available.
+ *
+ * Defaults to true and is only narrowed by an explicit refusal. Some hosts,
+ * the local dev harness among them, never send `initialize` at all, so a
+ * strict check treats silence as a refusal and hides the Anna lanes on a
+ * perfectly capable host. When a host does declare capabilities, a declared
+ * `llm.sample: false` is honoured and the bench does not offer a lane that
+ * cannot run. A lane that turns out to be unusable fails its reverse call
+ * with a clear, actionable error rather than anything being fabricated.
+ */
+let samplingNegotiated = true;
 /** Whether the host advertised APS. */
 let storageNegotiated = false;
 /**
@@ -173,8 +183,13 @@ async function handleForward(request) {
     if (request.method === 'initialize') {
         const params = (request.params ?? {});
         const hostCapabilities = (params.host_capabilities ?? {});
-        samplingNegotiated = hostCapabilities['llm.sample'] === true;
+        if (Object.keys(hostCapabilities).length > 0) {
+            samplingNegotiated = hostCapabilities['llm.sample'] === true;
+        }
         storageNegotiated = true;
+        // One line, no secrets: makes a missing grant diagnosable rather than
+        // showing up as an empty bench with no explanation.
+        logLine(`initialize protocol=${String(params.protocolVersion ?? '?')} host_capabilities=${JSON.stringify(hostCapabilities)} sampling=${samplingNegotiated}`);
         write({
             jsonrpc: '2.0',
             id,
