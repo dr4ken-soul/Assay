@@ -37,6 +37,13 @@ export const metadata: Metadata = {
   // metadataBase on its own does not emit a canonical link, it only resolves
   // relative URLs. Without this every deploy URL becomes its own canonical.
   alternates: { canonical: '/' },
+  icons: {
+    icon: [
+      { url: '/favicon-64.png', sizes: '64x64', type: 'image/png' },
+      { url: '/logo.png', sizes: '256x256', type: 'image/png' },
+    ],
+    apple: [{ url: '/logo.png', sizes: '256x256', type: 'image/png' }],
+  },
 }
 
 /** The viewport, light bench, no browser chrome tint. */

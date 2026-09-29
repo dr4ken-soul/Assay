@@ -96,8 +96,16 @@ export default function MorphNav() {
             event.preventDefault()
             window.scrollTo({ top: 0, behavior: 'smooth' })
           }}
-          className="focus-ring flex items-baseline"
+          className="focus-ring flex items-center gap-2.5"
         >
+          <img
+            src="/logo.png"
+            alt=""
+            aria-hidden="true"
+            width={collapsed ? 20 : 24}
+            height={collapsed ? 20 : 24}
+            className="shrink-0"
+          />
           <span className="font-display text-xl font-black tracking-[-0.02em] text-ink-primary">ASSAY</span>
           {!collapsed ? (
             <span className="ml-3 hidden font-mono text-[10px] uppercase tracking-[0.25em] text-ink-muted md:inline">

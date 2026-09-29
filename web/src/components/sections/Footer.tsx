@@ -28,8 +28,10 @@ export default function Footer() {
         <div className="flex flex-col gap-8 md:flex-row md:items-center md:justify-between">
           <Reveal>
             <div>
-              {/* Logo slot: replace with public/logo.svg once provided */}
-              <p className="font-display text-lg font-black tracking-[-0.02em] text-ink-primary">ASSAY</p>
+              <div className="flex items-center gap-2.5">
+                <img src="/logo.png" alt="Assay" width={22} height={22} className="shrink-0" />
+                <span className="font-display text-lg font-black tracking-[-0.02em] text-ink-primary">ASSAY</span>
+              </div>
               <p className="mt-3 font-body text-xs text-ink-muted">
                 Built for the Anna AI App Builder Program, Founding Builder cohort
               </p>

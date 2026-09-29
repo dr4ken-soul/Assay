@@ -98,7 +98,10 @@ export default function App() {
 
       <header className="sticky top-0 z-50 flex h-14 items-center justify-between border-b border-line bg-bench-primary/90 px-4 backdrop-blur-xl md:px-6">
         <div className="flex items-center gap-6">
-          <span className="font-display text-base font-black tracking-[-0.02em] text-ink-primary">ASSAY</span>
+          <span className="flex items-center gap-2">
+            <img src="./logo.png" alt="Assay" width={20} height={20} className="shrink-0" />
+            <span className="font-display text-base font-black tracking-[-0.02em] text-ink-primary">ASSAY</span>
+          </span>
           <nav className="flex items-center gap-1" aria-label="Assay views">
             {TABS.map((entry) => {
               const active = connected && entry.id === tab
