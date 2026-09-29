@@ -295,6 +295,26 @@ cd app && anna-app validate --strict --bundle ui/dist
 
 ## Publishing to Anna
 
+### The order matters, and the Console encourages the wrong one
+
+The Developer Console at https://anna.partners/developer has a big **New App** button, and it is tempting to press it. **Not yet.** Your app manifest references a `tool_id`, and both the validator and the publish precheck resolve it against the **live Executa catalogue**. If the tool does not exist yet, the app version will not validate and the submit-review precheck will fail.
+
+The tool comes first, then the app.
+
+| # | Do this | Where |
+|---|---|---|
+| 1 | Activate the developer profile | done, you are here |
+| 2 | `anna-app login`, then `anna-app account set-handle <handle>` | terminal, the handle is **required before your first app** |
+| 3 | Create the Executa and **Mint** its `tool_id` | https://anna.partners/executa |
+| 4 | Wire the minted id into the repo | `node scripts/set-tool-id.mjs apply --tool <id>` |
+| 5 | Publish the Executa, visibility `private` or `app_bundled` | https://anna.partners/executa |
+| 6 | Create and version the App | `anna-app apps publish`, or the Console |
+| 7 | Fill the listing, then submit for review | Console, Listing and Versions tabs |
+
+Two things the mint step insists on that catch people out: the **Tool ID field is read-only and the Create button stays disabled until you press the Mint button**, and a draft that is never committed **expires after 24 hours**. Mint early, and even if you walk away the id is yours for a day.
+
+Do not flip the tool to `public` yet. Set it `private` while you test, or `app_bundled` if it is only ever meant to ship inside Assay. The docs are explicit that promoting too early is the common cause of a failed install leaving a dead tool behind.
+
 ### 1. Swap the development tool id
 
 The project ships with `tool-dev-assay`, the synthetic id `anna-app init` generates so the app runs offline. Anna mints the real one for your account, and the **same string has to appear in four places**. Forgetting any one of them produces a Stopped card or a silent `tools.invoke` timeout, with no error at build time.
@@ -318,7 +338,7 @@ The four anchors it writes:
 | 3 | `app/manifest.json` | `ui.host_api.tools[0]`, with its `required:` prefix |
 | 4 | `app/ui/src/lib/host.ts` | the `TOOL_ID` constant the bundle invokes through |
 
-The plugin reads anchor 1 itself, so `describe.name` can never drift from the file the CLI launches it from. `app/ui/test/contract.test.ts` asserts all four agree, which turns the silent failure into a failed test suite.
+The platform tracks identity by the minted `tool_id` and no longer reads a self-reported `describe.name` for that purpose, so baking the id into the plugin's own manifest is optional rather than required. It is done here anyway: it matches the reference example, and it makes the harness log name the tool it is running. `app/ui/test/contract.test.ts` asserts all four agree, which turns the silent failure into a failed test suite.
 
 To put the placeholder back before committing a change, `node scripts/set-tool-id.mjs reset`.
 
@@ -478,7 +498,7 @@ Everything the four planning documents ask for is built. Six decisions differ, e
 
 **1. The seven bench assets are coded SVG, not photography.** `FRONTEND_SPEC` 14 briefs seven photographic assets, pulled from stock or generated. This build has no image generation available and no licensed photo source, so the Assay Bench series is drawn as original SVG on the same palette: cool grey bench, ink shadows, one red indicator, no warm cream, no logos, no people. They are on-palette, deterministic, tiny, and licence-clean. Replacing them with graded photography is a drop-in swap: the files are referenced by path and the aspect ratios already match the brief.
 
-**2. `tool_id` is the development placeholder, and a script keeps it consistent.** `tool-dev-assay` is what `anna-app init` generates so the app runs offline. The real id is minted against your account, and the platform requires it in four places at once. Rather than document four manual edits and hope, `app/scripts/set-tool-id.mjs` writes all four atomically, the plugin reads its own id from the discovery file so `describe.name` cannot drift, and the contract test fails the suite if the four disagree. Publishing still needs your account.
+**2. `tool_id` is the development placeholder, and a script keeps it consistent.** `tool-dev-assay` is what `anna-app init` generates so the app runs offline. The real id is minted against your account and the platform requires it in the app manifest. Rather than document four manual edits and hope, `app/scripts/set-tool-id.mjs` writes all four anchors atomically and the contract test fails the suite if they disagree. Publishing still needs your account.
 
 **3. The anatomy and metrics sections ship unbound.** The spec is explicit that every number traces to a recorded trial and that an unbackable card is removed. With no account and no keys, no trial can be recorded from here, so the corpus is empty and the sections render their empty state. This is the spec's own rule applied honestly, not a gap. The procedure to bind it is in [Binding the landing page](#binding-the-landing-page-to-a-real-trial).
 

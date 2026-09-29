@@ -1,6 +1,35 @@
 {
-  "tool_id": "tool-dev-assay",
+  "slug": "assay",
+  "name": "assay",
+  "version": "0.1.0",
+  "executa_type": "tool",
   "type": "node",
-  "command": ["node", "dist/index.js"],
-  "_comment": "Swap tool_id for the id minted at https://anna.partners/executa before publishing. The same string must appear in manifest.json required_executas and ui.host_api.tools."
+  "tool_id": "tool-dev-assay",
+  "description": "Blind trial bench for model selection. Runs one workload across every model on the bench in parallel with the names shuffled to letters, scores the anonymised outputs with a blind examiner, measures token cost and latency, then reveals which model earned which column and folds the crown into a personal routing policy.",
+  "entry": "dist/index.js",
+  "distribution": {
+    "type": "binary",
+    "package_name": "assay-core",
+    "executable_name": "assay-core",
+    "capabilities": ["llm.sample", "aps.kv"],
+    "binary_artifacts": {
+      "windows-x86_64": { "path": "build/assay-core-windows-x86_64.zip", "entrypoint": "dist/index.js" },
+      "darwin-arm64": { "path": "build/assay-core-darwin-arm64.zip", "entrypoint": "dist/index.js" },
+      "darwin-x86_64": { "path": "build/assay-core-darwin-x86_64.zip", "entrypoint": "dist/index.js" },
+      "linux-x86_64": { "path": "build/assay-core-linux-x86_64.zip", "entrypoint": "dist/index.js" },
+      "linux-arm64": { "path": "build/assay-core-linux-arm64.zip", "entrypoint": "dist/index.js" }
+    }
+  },
+  "profiles": {
+    "local": {
+      "distribution": {
+        "type": "local",
+        "package_name": "assay-core",
+        "executable_name": "assay-core",
+        "capabilities": ["llm.sample", "aps.kv"]
+      }
+    }
+  },
+  "active_profile": "local",
+  "_comment": "Swap tool_id for the id you mint at https://anna.partners/executa, then run: node ../scripts/set-tool-id.mjs apply --tool <minted-id>. distribution.type binary is what the Marketplace installs; active_profile local is what anna-app dev uses. `command` is honoured by anna-app dev auto-discovery and is intentionally absent here because the CLI reads entry for the node type."
 }
