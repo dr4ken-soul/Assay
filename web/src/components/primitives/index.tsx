@@ -9,7 +9,7 @@
 'use client'
 
 import { motion, useInView } from 'motion/react'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { EASE, ENTER, VIEWPORT, enterVariants, useReducedMotion } from '@/lib/motion'
 
 /**
@@ -79,21 +79,28 @@ export function SplitHeadline({
   return (
     <h1 className={className}>
       {words.map((word, index) => (
-        <span key={`${word}-${index}`} className="inline-block overflow-hidden align-bottom">
-          <motion.span
-            className="inline-block"
-            initial={reduced ? { opacity: 0 } : { filter: 'blur(10px)', opacity: 0, y: 24 }}
-            animate={reduced ? { opacity: 1 } : { filter: 'blur(0px)', opacity: 1, y: 0 }}
-            transition={
-              reduced
-                ? { duration: 0.3, delay: index * 0.03 }
-                : { duration, ease: EASE, delay: index * delayStep }
-            }
-          >
-            {word}
-            {index < words.length - 1 ? ' ' : ''}
-          </motion.span>
-        </span>
+        <Fragment key={`${word}-${index}`}>
+          <span className="inline-block overflow-hidden align-bottom">
+            <motion.span
+              className="inline-block"
+              initial={reduced ? { opacity: 0 } : { filter: 'blur(10px)', opacity: 0, y: 24 }}
+              animate={reduced ? { opacity: 1 } : { filter: 'blur(0px)', opacity: 1, y: 0 }}
+              transition={
+                reduced
+                  ? { duration: 0.3, delay: index * 0.03 }
+                  : { duration, ease: EASE, delay: index * delayStep }
+              }
+            >
+              {word}
+            </motion.span>
+          </span>
+          {/*
+            The space sits outside the overflow-hidden clip. Inside it the
+            browser collapses the trailing whitespace and the words run
+            together: YOUARECHOOSINGMODELSONMARKETING.
+          */}
+          {index < words.length - 1 ? ' ' : null}
+        </Fragment>
       ))}
     </h1>
   )

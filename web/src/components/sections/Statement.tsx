@@ -8,6 +8,7 @@
 'use client'
 
 import { motion } from 'motion/react'
+import { Fragment } from 'react'
 import { Reveal, useReducedMotion } from '@/components/primitives'
 
 /** The statement, word by word. */
@@ -26,18 +27,21 @@ export default function Statement() {
       <div className="w-full px-6 md:px-10">
         <h2 className="text-center font-display text-[clamp(2.25rem,6.5vw,5.5rem)] font-black uppercase leading-[0.95] tracking-[-0.02em] text-ink-primary [text-wrap:balance]">
           {words.map((word, index) => (
-            <span key={`${word}-${index}`} className="inline-block overflow-hidden align-bottom">
-              <motion.span
-                className="inline-block"
-                initial={reduced ? { opacity: 0 } : { filter: 'blur(8px)', opacity: 0, y: 20 }}
-                whileInView={reduced ? { opacity: 1 } : { filter: 'blur(0px)', opacity: 1, y: 0 }}
-                viewport={{ once: false, amount: 0.1 }}
-                transition={{ duration: reduced ? 0.3 : 0.6, ease: [0.16, 1, 0.3, 1], delay: reduced ? 0 : index * 0.09 }}
-              >
-                {word}
-                {index < words.length - 1 ? ' ' : ''}
-              </motion.span>
-            </span>
+            <Fragment key={`${word}-${index}`}>
+              <span className="inline-block overflow-hidden align-bottom">
+                <motion.span
+                  className="inline-block"
+                  initial={reduced ? { opacity: 0 } : { filter: 'blur(8px)', opacity: 0, y: 20 }}
+                  whileInView={reduced ? { opacity: 1 } : { filter: 'blur(0px)', opacity: 1, y: 0 }}
+                  viewport={{ once: false, amount: 0.1 }}
+                  transition={{ duration: reduced ? 0.3 : 0.6, ease: [0.16, 1, 0.3, 1], delay: reduced ? 0 : index * 0.09 }}
+                >
+                  {word}
+                </motion.span>
+              </span>
+              {/* The space sits outside the clip, or the browser collapses it. */}
+              {index < words.length - 1 ? ' ' : null}
+            </Fragment>
           ))}
         </h2>
 

@@ -30,7 +30,7 @@ const DRAWER_LINKS = [
   { href: '#policy', label: 'POLICY' },
   { href: 'https://anna.partners', label: 'OPEN IN ANNA', external: true },
   { href: 'https://github.com/dr4ken-soul/Assay', label: 'GITHUB', external: true },
-  { href: 'https://x.com', label: 'X', external: true },
+  { href: 'https://x.com/xoxo_psychoo', label: 'X', external: true },
 ]
 
 /**

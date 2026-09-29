@@ -305,8 +305,8 @@ cd app && anna-app validate --strict --bundle ui/dist
 | App | `assay`, `app_id 351`, v**0.1.2** (`version_id 985`), status **draft** |
 | App pins | executa_version 591 = Executa v0.1.3 |
 | UI bundle | staged, `status: ready` |
-| Landing page | https://assay-o94w3l6he-psycho-projects.vercel.app |
-| Listing | not yet filled |
+| Landing page | https://assay-psycho-projects.vercel.app |
+| Listing | name, category, tagline synced. Description, logo and screenshots still to fill |
 | Review | not yet submitted |
 
 The app is deliberately **not** released. `apps release` requires `APPROVED`, and only an admin review gets you there. That is the one gate left, and it is the correct one to be shut: a review that fails costs a round trip, and the honest sequence is fill the listing, submit, then release.
@@ -487,7 +487,7 @@ export const CORPUS: Corpus = {
 
 ## Deploying the landing page
 
-Live at **https://assay-o94w3l6he-psycho-projects.vercel.app**.
+Live at **https://assay-psycho-projects.vercel.app**.
 
 ```bash
 cd web

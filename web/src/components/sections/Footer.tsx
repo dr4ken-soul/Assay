@@ -13,7 +13,7 @@ import { Reveal } from '@/components/primitives'
 const LINKS = [
   { href: 'https://anna.partners', label: 'MARKETPLACE' },
   { href: 'https://github.com/dr4ken-soul/Assay', label: 'GITHUB' },
-  { href: 'https://x.com', label: 'X' },
+  { href: 'https://x.com/xoxo_psychoo', label: 'X' },
   { href: 'https://anna.partners/developers', label: 'DOCS' },
 ]
 
