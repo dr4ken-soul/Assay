@@ -1,6 +1,6 @@
 {
   "name": "assay-core",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "The Assay Executa. Blind multi-model trial execution, blind examination and routing policy.",
   "license": "MIT",
   "type": "module",
