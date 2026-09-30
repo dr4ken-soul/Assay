@@ -8,8 +8,14 @@
   "description": "Blind trial bench for model selection. Runs one workload across every model on the bench in parallel with the names shuffled to letters, scores the anonymised outputs with a blind examiner, measures token cost and latency, then reveals which model earned which column and folds the crown into a personal routing policy.",
   "entry": "dist/index.js",
   "distribution": {
-    "active": "binary",
+    "active": "npm",
     "profiles": {
+      "npm": {
+        "type": "npm",
+        "package_name": "assay-core",
+        "executable_name": "assay-core",
+        "capabilities": ["llm.sample", "aps.kv"]
+      },
       "local": {
         "type": "local",
         "package_name": "assay-core",
@@ -31,5 +37,5 @@
       }
     }
   },
-  "_comment": "Swap tool_id for the minted id: node ../../scripts/set-tool-id.mjs apply --tool <minted-id>. distribution.active is binary because the Marketplace installs the tool for other users, and local would only ever install on the author's own machine. The archives are built by: npm run artifacts. Use --profile local to publish a dev-only build for your own Agent."
+  "_comment": "Swap tool_id for the minted id: node ../../scripts/set-tool-id.mjs apply --tool <minted-id>. distribution.active is npm: the plugin is pure JavaScript with no native deps, so the platform installs the package with its own Node and runs the bin, which works on every platform from one publish. The binary profile is kept but it installs a plain script with no runtime, which the host cannot exec, and produced describe_failed. Use --profile local to publish a dev-only build for your own Agent."
 }
