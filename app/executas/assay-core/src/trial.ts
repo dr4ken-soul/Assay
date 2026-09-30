@@ -15,7 +15,7 @@
  */
 
 import { randomInt } from 'node:crypto'
-import { canSample, currentInvokeContext, logLine, reverseCall, ReverseRpcError } from './rpc.js'
+import { canSample, currentInvokeContext, logLine, reverseCall, ReverseRpcError, RPC_ERROR } from './rpc.js'
 import { computeCostUsd, computeRunningCostUsd, estimateTokens } from './cost.js'
 import { annaLaneFor, catalogueFor, credentialFor } from './roster.js'
 import { loadTrial, saveTrial, writeKey } from './store.js'
@@ -324,7 +324,7 @@ async function runColumn(record: TrialRecord, letter: Letter): Promise<ColumnRes
       output,
     }
   } catch (error) {
-    const classified = classify(error)
+    const classified = classify(error, source)
     logLine('column failed', letter, classified.errorClass)
     return failedColumn(letter, started, classified.errorClass, classified.hint)
   }
@@ -376,17 +376,62 @@ class ProviderError extends Error {
 }
 
 /**
- * Classifies an unknown failure without ever surfacing provider text.
+ * Classifies a failure without ever surfacing provider text.
+ *
+ * A reverse RPC failure is separated from a provider failure because the fix
+ * is different. A host that refuses `sampling/createMessage` never reached a
+ * model at all, so telling the operator to check their API key sends them
+ * looking in the wrong place when no key was involved.
+ *
  * @param error The thrown value.
+ * @param source Whether the column was an Anna lane or a bring-your-own-key model.
  * @returns The classification and the operator hint.
  */
-function classify(error: unknown): { errorClass: TrialErrorClass; hint: string } {
+function classify(error: unknown, source: 'anna' | 'byok'): { errorClass: TrialErrorClass; hint: string } {
   if (error instanceof ProviderError) return { errorClass: error.errorClass, hint: error.hint }
+
+  if (error instanceof ReverseRpcError) {
+    if (error.code === RPC_ERROR.samplingNotGranted) {
+      return { errorClass: 'auth', hint: 'Anna has sampling switched off for this app, turn it on in the app permissions' }
+    }
+    if (error.code === RPC_ERROR.samplingNotNegotiated) {
+      return { errorClass: 'auth', hint: 'this host did not grant Anna sampling, the app cannot call a model from here' }
+    }
+    if (error.code === RPC_ERROR.methodNotFound) {
+      return {
+        errorClass: 'auth',
+        hint: 'this host does not implement Anna sampling, run the trial in Anna rather than a local harness',
+      }
+    }
+    return { errorClass: 'status', hint: 'Anna refused the sampling call for this lane, check the app permissions' }
+  }
+
   const name = (error as Error)?.name ?? ''
   if (name === 'AbortError' || name === 'TimeoutError') {
     return { errorClass: 'timeout', hint: 'the provider did not answer inside 75s, try a faster column' }
   }
+
+  if (source === 'anna') {
+    return { errorClass: 'unknown', hint: 'the Anna lane did not return an answer, this host cannot run the lane' }
+  }
   return { errorClass: 'unknown', hint: 'the call did not complete, check the key for this provider' }
+}
+
+/**
+ * Exposes the column failure classifier to the test suite.
+ *
+ * The classifier is internal to a column run, and the hint it picks is the
+ * only diagnostic a failed column surfaces, so it is worth pinning.
+ *
+ * @param error The thrown value.
+ * @param source Whether the column was an Anna lane or a bring-your-own-key model.
+ * @returns The classification and the operator hint.
+ */
+export function classifyForTest(
+  error: unknown,
+  source: 'anna' | 'byok',
+): { errorClass: TrialErrorClass; hint: string } {
+  return classify(error, source)
 }
 
 /** The shape every provider adapter returns. */

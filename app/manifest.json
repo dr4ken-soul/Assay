@@ -3,7 +3,7 @@
   "required_executas": [
     {
       "tool_id": "tool-dr4ken-soul-assay-vzvwwcr5",
-      "min_version": "0.1.5",
+      "min_version": "0.1.6",
       "version": "latest"
     }
   ],
