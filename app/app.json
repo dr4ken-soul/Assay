@@ -6,5 +6,7 @@
   "category": "developer-tools",
   "pricing_model": "free",
   "homepage_url": "https://github.com/dr4ken-soul/Assay",
-  "support_url": "https://github.com/dr4ken-soul/Assay/issues"
+  "support_url": "https://github.com/dr4ken-soul/Assay/issues",
+  "logo_file": "../logo/assay logo.png",
+  "screenshots": []
 }

@@ -1,14 +1,14 @@
 {
   "slug": "assay",
   "name": "assay",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "executa_type": "tool",
   "type": "node",
   "tool_id": "tool-dr4ken-soul-assay-vzvwwcr5",
   "description": "Blind trial bench for model selection. Runs one workload across every model on the bench in parallel with the names shuffled to letters, scores the anonymised outputs with a blind examiner, measures token cost and latency, then reveals which model earned which column and folds the crown into a personal routing policy.",
   "entry": "dist/index.js",
   "distribution": {
-    "active": "npm",
+    "active": "binary",
     "profiles": {
       "npm": {
         "type": "npm",
@@ -28,14 +28,29 @@
         "executable_name": "assay-core",
         "capabilities": ["llm.sample", "aps.kv"],
         "binary_artifacts": {
-          "windows-x86_64": { "path": "build/assay-core-windows-x86_64.zip", "entrypoint": "dist/index.js" },
-          "darwin-arm64": { "path": "build/assay-core-darwin-arm64.zip", "entrypoint": "dist/index.js" },
-          "darwin-x86_64": { "path": "build/assay-core-darwin-x86_64.zip", "entrypoint": "dist/index.js" },
-          "linux-x86_64": { "path": "build/assay-core-linux-x86_64.zip", "entrypoint": "dist/index.js" },
-          "linux-arm64": { "path": "build/assay-core-linux-arm64.zip", "entrypoint": "dist/index.js" }
+          "windows-x86_64": {
+            "path": "build/assay-core-{version}-windows-x86_64.zip",
+            "entrypoint": "bin/assay-core.exe"
+          },
+          "darwin-arm64": {
+            "path": "build/assay-core-{version}-darwin-arm64.tar.gz",
+            "entrypoint": "bin/assay-core"
+          },
+          "darwin-x86_64": {
+            "path": "build/assay-core-{version}-darwin-x86_64.tar.gz",
+            "entrypoint": "bin/assay-core"
+          },
+          "linux-x86_64": {
+            "path": "build/assay-core-{version}-linux-x86_64.tar.gz",
+            "entrypoint": "bin/assay-core"
+          },
+          "linux-arm64": {
+            "path": "build/assay-core-{version}-linux-arm64.tar.gz",
+            "entrypoint": "bin/assay-core"
+          }
         }
       }
     }
   },
-  "_comment": "Swap tool_id for the minted id: node ../../scripts/set-tool-id.mjs apply --tool <minted-id>. distribution.active is npm: the plugin is pure JavaScript with no native deps, so the platform installs the package with its own Node and runs the bin, which works on every platform from one publish. The binary profile is kept but it installs a plain script with no runtime, which the host cannot exec, and produced describe_failed. Use --profile local to publish a dev-only build for your own Agent."
+  "_comment": "Swap tool_id for the minted id: node ../../scripts/set-tool-id.mjs apply --tool <minted-id>. distribution.active is binary: scripts/build-binaries.mjs builds one self-contained executable per platform with Node's single executable application support, so the Cloud Agent needs no language runtime installed. Run `npm run binaries`, then `anna-app executa upload-binaries`. The npm and local profiles stay declared for development; use --profile npm to publish the package for a harness that runs its own Node."
 }

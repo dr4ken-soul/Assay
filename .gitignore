@@ -6,6 +6,8 @@ node_modules/
 app/ui/dist/
 # the distribution archives are built by npm run artifacts, never committed
 app/executas/assay-core/build/
+# the SEA work tree holds the downloaded runtimes and the injected trees
+app/executas/assay-core/.sea/
 web/.next/
 web/out/
 

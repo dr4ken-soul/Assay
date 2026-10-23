@@ -25,10 +25,8 @@
  *   policy_export      the policy as a JSON string
  */
 
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { logLine, setForwardHandler, setInvokeHandler, startTransport, type InvokeContext } from './rpc.js'
+import { TOOL_ID as GENERATED_TOOL_ID, VERSION as GENERATED_VERSION } from './generated-identity.js'
 import { CREDENTIAL_SCHEMA, listRoster } from './roster.js'
 import { RateLimitError, startTrial, trialStatus } from './trial.js'
 import { verdictAndStore } from './judge.js'
@@ -38,66 +36,36 @@ import type { Letter, TrialRecord } from './types.js'
 import { TASK_TYPES } from './types.js'
 
 /**
- * The tool id, read from the sibling `executa.json` when it is on disk.
+ * The tool id, compiled in from the discovery file.
  *
  * The platform mints the id and it is the same string in four places: the CLI
  * discovery file, `describe.name`, `manifest.required_executas` and
- * `ui.host_api.tools`. Reading the discovery file here means the plugin can
- * never disagree with the file the CLI launches it from, which is the failure
- * mode that produces a Stopped card and a silent `tools.invoke` timeout.
- * @returns The tool id, or the built-in default when the file is not readable.
+ * `ui.host_api.tools`.
+ *
+ * It used to be read from `executa.json` at startup, which is right for a
+ * source checkout but impossible for a single executable application, since
+ * a binary has no `executa.json` beside it. The value is now generated into
+ * the build by scripts/gen-identity.mjs, which reads that same file, so the
+ * plugin still cannot disagree with the file the CLI launches it from. A
+ * contract test asserts the generated value matches the file, so a drift
+ * fails the suite rather than a user's trial.
  */
-function resolveToolId(): string {
-  const candidates = [
-    // fileURLToPath, not URL.pathname: pathname is percent-encoded and carries a
-    // leading slash on Windows, so readFileSync cannot open it and the lookup
-    // would silently fall through to the built-in default.
-    fileURLToPath(new URL('../executa.json', import.meta.url)),
-    join(process.cwd(), 'executa.json'),
-  ]
-  for (const candidate of candidates) {
-    try {
-      const parsed = JSON.parse(readFileSync(candidate, 'utf8')) as { tool_id?: string }
-      if (typeof parsed.tool_id === 'string' && parsed.tool_id.length > 0) return parsed.tool_id
-    } catch {
-      /* try the next candidate */
-    }
-  }
-  return DEFAULT_TOOL_ID
-}
-
-/** The built-in tool id, used only when `executa.json` is not readable. */
-const DEFAULT_TOOL_ID = 'tool-dev-assay'
 
 /** The tool id this process is running as. */
-const TOOL_ID = resolveToolId()
+const TOOL_ID = GENERATED_TOOL_ID
 
 /**
- * The plugin version, read from the sibling `package.json`.
+ * The plugin version, compiled in from `package.json`.
  *
  * It is a literal in neither the manifest nor `health`, because a hardcoded
  * version silently drifts from the version the platform has frozen and then
- * reports the wrong one in execution traces.
- * @returns The SemVer string, or `0.0.0` when the file is unreadable.
+ * reports the wrong one in execution traces. The value is generated into the
+ * build from that same file by scripts/gen-identity.mjs, for the same reason
+ * the tool id is.
  */
-function resolveVersion(): string {
-  const candidates = [
-    fileURLToPath(new URL('../package.json', import.meta.url)),
-    join(process.cwd(), 'package.json'),
-  ]
-  for (const candidate of candidates) {
-    try {
-      const parsed = JSON.parse(readFileSync(candidate, 'utf8')) as { version?: string }
-      if (typeof parsed.version === 'string' && parsed.version.length > 0) return parsed.version
-    } catch {
-      /* try the next candidate */
-    }
-  }
-  return '0.0.0'
-}
 
 /** The version this plugin reports through describe and health. */
-const VERSION = resolveVersion()
+const VERSION = GENERATED_VERSION
 
 /** The plugin manifest returned by `describe`. */
 const MANIFEST = {
@@ -108,7 +76,7 @@ const MANIFEST = {
     'Blind trial bench for model selection. Runs one workload across every model on the bench in parallel with the names shuffled to letters, scores the anonymised outputs with a blind examiner, measures token cost and latency, then reveals which model earned which column and folds the crown into a personal routing policy.',
   author: 'Assay',
   host_capabilities: ['llm.sample', 'aps.kv'],
-  runtime: { type: 'npm' },
+  runtime: { type: 'binary' },
   credentials: CREDENTIAL_SCHEMA,
   tools: [
     {
