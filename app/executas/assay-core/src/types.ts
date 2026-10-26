@@ -65,6 +65,8 @@ export interface ColumnResult {
   costUsd: number | null
   costSource: CostSource
   output: string
+  /** The concrete model the provider or host served. Hidden until the unblind. */
+  servedModel?: string
   /** Error class only, never provider text. Absent on `ok` columns. */
   errorClass?: TrialErrorClass
   /** Short operator-facing line, for example `check the key for this provider`. */

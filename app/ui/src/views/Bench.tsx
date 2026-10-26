@@ -16,11 +16,27 @@ import { formatCost, formatLatency, formatTimer, formatTokens, formatValueRatio,
 import { AssayHostError, crownTrial, listRoster, startTrial, trialStatus, trialVerdict, unblindTrial } from '../lib/host'
 import type { ColumnStatus, Letter, RosterEntry, TrialStarted, TrialStatus, TrialVerdict } from '../lib/types'
 
-/** How often the bench polls a running trial. */
-const POLL_MS = 500
+/**
+ * How often the bench polls a running trial, and how long it waits before the
+ * first poll. Polls run strictly one at a time: each call waits for the last
+ * one to return before the next is sent. Speeding this up does not buy better
+ * freshness, it only queues concurrent invokes at the agent, which can make
+ * reads miss.
+ */
+const POLL_MS = 2000
+const FIRST_POLL_MS = 1600
 
 /** The bench phase. The bench never leaves this order. */
 type Phase = 'setup' | 'running' | 'verdict' | 'unblind'
+
+/**
+ * Waits out a delay inside an async loop.
+ * @param ms How long to wait.
+ * @returns A promise that settles when the wait is over.
+ */
+function waitFor(ms: number) {
+  return new Promise<void>((resolve) => window.setTimeout(resolve, ms))
+}
 
 /**
  * Converts a host error into the two lines an inline error shows.
@@ -150,11 +166,19 @@ export function Bench() {
       }
     }
 
-    const timer = window.setInterval(poll, POLL_MS)
-    void poll()
+    // One poll at a time, each waited out before the next is sent. Firing
+    // polls on an unchecked interval queues concurrent invokes at the agent,
+    // which can make trial reads miss and starve the run of its verdict.
+    void (async () => {
+      await waitFor(FIRST_POLL_MS)
+      while (!cancelled) {
+        await poll()
+        if (cancelled || verdictSettled) return
+        await waitFor(POLL_MS)
+      }
+    })()
     return () => {
       cancelled = true
-      window.clearInterval(timer)
     }
   }, [phase, started])
 

@@ -2,10 +2,9 @@
  * Section 6, the policy.
  *
  * Split text and art, recomposed: the art panel is a beam balance mid-pivot,
- * and the policy card below it shows the routing a run of crowns produces. The
- * card's route rows come from the recorded corpus when there is one, and from
- * the published lanes when there is not, because a lane is a statement about
- * the product and a route is a measurement.
+ * and the policy card below it shows the route structure the product promises.
+ * It is a statement about the lanes, not a measurement, so it carries no
+ * numbers and is never presented as a recorded policy.
  */
 
 'use client'
@@ -13,7 +12,6 @@
 import { motion, useScroll, useSpring, useTransform } from 'motion/react'
 import { useRef } from 'react'
 import { DoubleBezel, Reveal, useReducedMotion } from '@/components/primitives'
-import { corpusIsBound } from '@/data/measures'
 
 /** What the product promises the policy does, stated as lanes not numbers. */
 const LANES = [
@@ -39,7 +37,6 @@ export default function Policy() {
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ['start end', 'end start'] })
   const smooth = useSpring(scrollYProgress, { stiffness: 90, damping: 26, restDelta: 0.001 })
   const parallax = useTransform(smooth, [0, 1], reduced ? [0, 0] : [-8, 8])
-  const bound = corpusIsBound()
 
   return (
     <section id="policy" ref={sectionRef} data-density="dense" className="bg-bench-primary px-6 py-24 md:px-10 md:py-32">
@@ -88,10 +85,10 @@ export default function Policy() {
           <DoubleBezel className="mt-6">
             <div className="mb-4 flex items-center justify-between">
               <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-muted">
-                {bound ? 'POLICY, RECORDED' : 'POLICY SHAPE'}
+                POLICY SHAPE
               </span>
               <span className="font-mono text-[11px] text-ink-secondary">
-                {bound ? 'FROM YOUR LEDGER' : 'BEFORE THE FIRST CROWN'}
+                THE ROUTE STRUCTURE
               </span>
             </div>
 

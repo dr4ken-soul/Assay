@@ -8,7 +8,7 @@
  * Key layout, fixed by the blueprint:
  *
  *   trials/{id}        one TrialRecord
- *   trials/index       the ledger index, newest first
+ *   trials/index       the ledger summaries, newest first
  *   policy/current     the PolicyRecord
  *   policy/version     the integer policy version, mirrored for the UI
  *   ratelimit/{bucket} the trial timestamps inside one hourly bucket
@@ -18,7 +18,7 @@
  * degradation is logged once, never silently.
  */
 
-import { canUseStorage, logLine, reverseCall, ReverseRpcError } from './rpc.js'
+import { canUseStorage, logLine, pause, reverseCall, ReverseRpcError } from './rpc.js'
 import { RATE_LIMIT_PREFIX } from './types.js'
 import type { PolicyRecord, TrialRecord, TrialSummary } from './types.js'
 
@@ -45,19 +45,28 @@ export async function readKey<T>(key: string): Promise<T | null> {
     noteFallback()
     return (memory.get(key) as T) ?? null
   }
-  try {
-    const result = (await reverseCall('storage/get', { scope: 'tool', key })) as {
-      value?: T
-      exists?: boolean
+  // A storage read the agent could not serve is not the key being absent:
+  // the agent has been seen to refuse even a small run of reverse calls. A
+  // failed read is repeated on a short leash before absence is reported, so
+  // one bad answer never ends up on screen as "not found". A read answered
+  // affirmatively with no value is real absence and comes straight back.
+  const maxAttempts = 4
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const result = (await reverseCall('storage/get', { scope: 'tool', key })) as {
+        value?: T
+        exists?: boolean
+      }
+      if (result?.exists === false) return null
+      return result?.value ?? null
+    } catch (error) {
+      if (error instanceof ReverseRpcError) {
+        logLine('storage/get failed', `attempt=${attempt}/${maxAttempts}`, String(error.code), error.message)
+      }
+      if (attempt < maxAttempts) await pause(400)
     }
-    if (result?.exists === false) return null
-    return result?.value ?? null
-  } catch (error) {
-    if (error instanceof ReverseRpcError) {
-      logLine('storage/get failed', String(error.code), error.message)
-    }
-    return null
   }
+  return null
 }
 
 /**
@@ -72,16 +81,27 @@ export async function writeKey(key: string, value: unknown): Promise<boolean> {
     memory.set(key, value)
     return false
   }
-  try {
-    await reverseCall('storage/set', { scope: 'tool', key, value })
-    return true
-  } catch (error) {
-    if (error instanceof ReverseRpcError) {
-      logLine('storage/set failed', String(error.code), error.message)
+  // A write this store cannot serve is a lost mapping, a lost crown, a lost
+  // reveal. The agent has been seen to refuse everything off the reverse
+  // channel for a spell after a freshly deployed plugin boots, so a failed
+  // write is repeated on a short leash before the in-process fallback is
+  // allowed to take it, and the fallback is named in the log rather than
+  // passing quietly as durability.
+  const maxAttempts = 6
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await reverseCall('storage/set', { scope: 'tool', key, value })
+      return true
+    } catch (error) {
+      if (error instanceof ReverseRpcError) {
+        logLine('storage/set failed', `attempt=${attempt}/${maxAttempts}`, String(error.code), error.message)
+      }
+      if (attempt < maxAttempts) await pause(500)
     }
-    memory.set(key, value)
-    return false
   }
+  memory.set(key, value)
+  logLine('storage/write kept in fallback', key)
+  return false
 }
 
 /**
@@ -145,13 +165,24 @@ export function trialKey(trialId: string): string {
 
 /**
  * Writes a trial record and refreshes the ledger index.
+ *
+ * The index carries each row's summary directly now, so a ledger page is one
+ * storage read regardless of how many trials ran. Older index rows hold bare
+ * identifiers from before the summary ledger; they are kept and still load
+ * their record per id until the row expires. The summary itself is the
+ * unmappable row: it never carries the letter to model mapping, and it names
+ * a winner only once the record has been unblinded.
  * @param record The trial to persist.
- * @returns True when both writes landed in APS.
+ * @returns True when the record write landed in APS.
  */
 export async function saveTrial(record: TrialRecord): Promise<boolean> {
   const stored = await writeKey(trialKey(record.id), record)
-  const index = (await readKey<string[]>(TRIALS_INDEX_KEY)) ?? []
-  const next = [record.id, ...index.filter((id) => id !== record.id)].slice(0, 500)
+  const summary = toSummary(record)
+  const index = (await readKey<(TrialSummary | string)[]>(TRIALS_INDEX_KEY)) ?? []
+  const next = [
+    summary,
+    ...index.filter((entry) => (typeof entry === 'string' ? entry : entry.id) !== record.id),
+  ].slice(0, 500)
   await writeKey(TRIALS_INDEX_KEY, next)
   return stored
 }
@@ -167,10 +198,26 @@ export async function loadTrial(trialId: string): Promise<TrialRecord | null> {
 
 /**
  * Reads the ledger index, newest first.
- * @returns Trial identifiers, newest first.
+ *
+ * New rows are complete summaries. Rows written before the summary ledger
+ * hold bare identifiers, which the ledger resolves per record on demand.
+ * @returns Ledger entries, newest first.
  */
-export async function trialIndex(): Promise<string[]> {
-  return (await readKey<string[]>(TRIALS_INDEX_KEY)) ?? []
+export async function trialIndex(): Promise<(TrialSummary | string)[]> {
+  return (await readKey<(TrialSummary | string)[]>(TRIALS_INDEX_KEY)) ?? []
+}
+
+/**
+ * Replaces the ledger index wholesale.
+ *
+ * The one-time upgrade path uses this after loading legacy identifier rows:
+ * their summaries are written back so every later ledger page is one
+ * storage read rather than a chain of record reads.
+ * @param entries The full row list, newest first.
+ * @returns True when the write landed in APS.
+ */
+export async function writeTrialIndex(entries: (TrialSummary | string)[]): Promise<boolean> {
+  return writeKey(TRIALS_INDEX_KEY, entries)
 }
 
 /**
@@ -185,7 +232,8 @@ export function toSummary(record: TrialRecord): TrialSummary {
   const crowned = record.crown?.letter
   const crownIsAColumn = typeof crowned === 'string' && crowned !== 'tie' && crowned.length > 0
   const revealed = record.unblindedAt !== null && crownIsAColumn
-  const winnerName = revealed ? (record.rosterLabels[crowned as string] ?? null) : null
+  const served = revealed ? record.results[crowned as string]?.servedModel : undefined
+  const winnerName = revealed ? (served ?? record.rosterLabels[crowned as string] ?? null) : null
   const results = Object.values(record.results)
   return {
     id: record.id,

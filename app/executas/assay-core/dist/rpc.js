@@ -139,6 +139,17 @@ export async function reverseCall(method, params) {
     });
 }
 /**
+ * Waits out a retry pause.
+ *
+ * Retry waits belong with the transport because every caller that repeats a
+ * refused reverse call, a refused storage read included, pauses through it.
+ * @param ms The pause length.
+ * @returns A promise that settles when the pause is over.
+ */
+export function pause(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+/**
  * Handles one inbound line from the Agent.
  *
  * A frame with a `method` is a forward request. A frame with an `id` and a
@@ -172,7 +183,24 @@ function onLine(line) {
         return;
     }
     const request = message;
-    void handleForward(request);
+    void enqueueForward(request);
+}
+/**
+ * Runs forward handlers one at a time.
+ *
+ * The agent pipelines requests, and the plugin's reverse calls carry the
+ * running handler's `invoke_id`. Two handlers interleaved would stamp each
+ * other's storage and sampling calls with a foreign invoke id and be
+ * refused at the host, which showed up as vanishing ledger reads. A queue
+ * keeps every handler coherent for its whole life.
+ * @param request The inbound request to run.
+ * @returns A promise that settles when the handler wrote its frame.
+ */
+const forwardQueue = { tail: Promise.resolve() };
+function enqueueForward(request) {
+    const run = forwardQueue.tail.then(() => handleForward(request));
+    forwardQueue.tail = run.catch(() => undefined);
+    return run;
 }
 /**
  * Dispatches one forward request and writes the response frame.

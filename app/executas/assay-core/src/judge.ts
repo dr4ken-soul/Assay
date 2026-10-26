@@ -18,6 +18,7 @@ import { canSample, logLine, reverseCall, ReverseRpcError } from './rpc.js'
 import { computeCostUsd, priceTableVersion } from './cost.js'
 import { catalogueFor, annaLaneFor } from './roster.js'
 import { saveTrial } from './store.js'
+import { liveResultsFor } from './trial.js'
 import type { ColumnResult, Letter, RubricScores, TrialRecord, VerdictReport } from './types.js'
 
 /**
@@ -83,6 +84,12 @@ export function denyTermsFor(record: TrialRecord): string[] {
     if (catalogue) terms.add(catalogue.id.toLowerCase())
     const lane = annaLaneFor(modelId)
     if (lane) terms.add(lane.id.toLowerCase())
+    const served = record.results[letter]?.servedModel
+    if (served) {
+      terms.add(served.toLowerCase())
+      const bareServed = served.includes('/') ? served.slice(served.lastIndexOf('/') + 1) : served
+      if (bareServed.length >= 3) terms.add(bareServed.toLowerCase())
+    }
   }
   return [...terms].filter((term) => term.length >= 3).sort((a, b) => b.length - a.length)
 }
@@ -260,10 +267,10 @@ export async function buildVerdict(record: TrialRecord): Promise<VerdictReport> 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     const response = (await reverseCall('sampling/createMessage', {
       messages: [{ role: 'user', content: { type: 'text', text: userMessage } }],
-      max_tokens: 4096,
-      system_prompt: JUDGE_PROMPT,
+      maxTokens: 4096,
+      systemPrompt: JUDGE_PROMPT,
       temperature: 0.1,
-      include_context: 'none',
+      includeContext: 'none',
     })) as Record<string, unknown>
 
     const text = extractSamplingText(response)
@@ -379,8 +386,21 @@ function pickLeader(values: Record<string, number>): string | null {
  * @returns The stored trial, with its verdict attached.
  */
 export async function verdictAndStore(record: TrialRecord): Promise<TrialRecord> {
-  const verdict = await buildVerdict(record)
-  const sealed: TrialRecord = { ...record, verdict }
-  await saveTrial(sealed)
-  return sealed
+  // The verdict is computed once. A later read returns the stored report, so
+  // the examiner is never billed twice for the same trial.
+  if (record.verdict) return record
+  // A background run cannot persist after its invoke returns, so a verdict
+  // read merges any results still held live before examining the record.
+  const live = liveResultsFor(record.id)
+  if (live) {
+    for (const letter of Object.keys(record.rosterLetters) as Letter[]) {
+      if (!record.results[letter]) {
+        const result = live.get(letter)
+        if (result) record.results[letter] = result
+      }
+    }
+  }
+  record.verdict = await buildVerdict(record)
+  await saveTrial(record)
+  return record
 }

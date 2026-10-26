@@ -14,8 +14,13 @@ import { Bench } from '../src/views/Bench'
 import { installHostClient } from '../src/lib/host'
 import { FORBIDDEN_BEFORE_UNBLIND, makeFakeHost, type FakeHost } from './fakeHost'
 
-/** The bench poll interval, mirrored from Bench.tsx. */
-const POLL_MS = 500
+/**
+ * The bench poll pacing, mirrored from Bench.tsx. The first poll gives the
+ * columns a head start, the rest keep a steady sequential heartbeat until the
+ * verdict lands.
+ */
+const FIRST_POLL_MS = 1600
+const POLL_MS = 2000
 
 /** The roster selection the setup state starts on. */
 const WORKLOAD = 'Summarise this incident in three lines for a paying customer.'
@@ -78,11 +83,12 @@ async function startRun() {
  * Waits for the verdict state and for the running state to finish leaving.
  *
  * The presence boundary keeps the outgoing section mounted through its exit,
- * so asserting on the verdict alone would also read the running columns.
+ * so asserting on the verdict alone would also read the running columns. The
+ * timeout covers the paced first poll plus two more around a settled read.
  * @returns Nothing.
  */
 async function gotoVerdict() {
-  await screen.findByTestId('bench-verdict', undefined, { timeout: 5000 })
+  await screen.findByTestId('bench-verdict', undefined, { timeout: FIRST_POLL_MS + POLL_MS * 3 + 1000 })
   await waitFor(() => expect(screen.queryByTestId('bench-running')).toBeNull())
 }
 
@@ -123,7 +129,7 @@ describe('the blind', () => {
     await gotoVerdict()
     assertBlind('verdict state')
     expect(document.body.textContent).toContain('THE BLIND VERDICT')
-  })
+  }, 15000)
 
   it('reveals the names only after the crown', async () => {
     render(<Bench />)
@@ -138,7 +144,7 @@ describe('the blind', () => {
     const revealedA = screen.getByTestId('revealed-MODEL A')
     expect(revealedA.textContent).toContain('Claude Sonnet 4.5')
     expect(document.body.textContent).toContain('YOUR PICK')
-  })
+  }, 15000)
 
   it('marks a failed column and keeps it out of the scored set', async () => {
     render(<Bench />)
@@ -150,7 +156,7 @@ describe('the blind', () => {
     expect(failed.textContent).toContain('FAILED')
     expect(failed.textContent).toContain('the key for this provider was rejected')
     expect(failed.querySelector('[data-testid="rubric-bars"]')).toBeNull()
-  })
+  }, 15000)
 
   it('offers a tie and a crown for every letter, and no crown twice', async () => {
     render(<Bench />)
@@ -162,7 +168,7 @@ describe('the blind', () => {
     expect(screen.getByLabelText('Crown MODEL B as the winner')).toBeTruthy()
     expect(screen.getByLabelText('Crown MODEL C as the winner')).toBeTruthy()
     expect(screen.getByText('CALL IT A TIE')).toBeTruthy()
-  })
+  }, 15000)
 
   it('refuses to run on a single model and says why', async () => {
     render(<Bench />)
@@ -194,14 +200,14 @@ describe('the blind', () => {
     await screen.findByTestId('bench-setup')
     await startRun()
     await screen.findByTestId('bench-running')
-    await waitFor(() => expect(screen.getByTestId('error-note')).toBeTruthy())
+    await waitFor(() => expect(screen.getByTestId('error-note')).toBeTruthy(), { timeout: 8000 })
 
     expect(host.calls.filter((call) => call.method === 'trial_verdict').length).toBe(1)
 
     // Let several poll intervals elapse. The count must not move.
     await new Promise((resolve) => setTimeout(resolve, POLL_MS * 6))
     expect(host.calls.filter((call) => call.method === 'trial_verdict').length).toBe(1)
-  })
+  }, 30000)
 
   it('never logs or sends a model name to the unblind path before it is crowned', async () => {
     render(<Bench />)
@@ -211,5 +217,5 @@ describe('the blind', () => {
 
     const before = host.calls.length
     expect(host.calls.slice(0, before).some((call) => call.method === 'trial_unblind')).toBe(false)
-  })
+  }, 15000)
 })

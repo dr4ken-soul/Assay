@@ -75,10 +75,14 @@ function leadingColumns(trial: CorpusTrial): AnatomyColumn[] {
   }))
   const ranked = [...rows].sort((a, b) => b.share - a.share)
   const best = ranked[0]
-  const cheapest = [...rows].sort(
-    (a, b) => (trial.costUsd[a.letter] ?? Number.POSITIVE_INFINITY) - (trial.costUsd[b.letter] ?? Number.POSITIVE_INFINITY),
-  )[0]
-  const shown = new Set([best.letter, cheapest.letter, rows[0].letter])
+  // A value leader only exists when at least one column carries a measured
+  // cost. Anna credit lanes carry no card cost, so the claim is dropped.
+  const priced = rows
+    .map((row) => ({ row, cost: trial.costUsd[row.letter] }))
+    .filter((entry): entry is { row: (typeof rows)[number]; cost: number } => typeof entry.cost === 'number')
+    .sort((a, b) => a.cost - b.cost)
+  const cheapest = priced[0]?.row
+  const shown = new Set([best.letter, rows[0].letter, ...(cheapest ? [cheapest.letter] : [])])
 
   return [...rows]
     .filter((row) => shown.has(row.letter))
@@ -91,7 +95,7 @@ function leadingColumns(trial: CorpusTrial): AnatomyColumn[] {
       latencyMs: trial.latencyMs[row.letter] ?? 0,
       crowned: trial.crowned === row.letter,
       qualityLeader: row.letter === best.letter,
-      valueLeader: row.letter === cheapest.letter,
+      valueLeader: cheapest ? row.letter === cheapest.letter : false,
     }))
 }
 
@@ -132,8 +136,7 @@ export function metrics(): Metrics {
     .sort((a, b) => a - b)
 
   const medianCostGap = costs.length >= 2 && costs[0] > 0 ? costs[costs.length - 1] / costs[0] : null
-  const verdictMs = (trial as CorpusTrial & { verdictMs?: number }).verdictMs
-  const secondsToVerdict = typeof verdictMs === 'number' ? Math.round(verdictMs / 100) / 10 : null
+  const secondsToVerdict = Math.round(trial.verdictMs / 100) / 10
   const modelsOnBench = trial.revealed.length > 0 ? trial.revealed.length : null
 
   return { medianCostGap, secondsToVerdict, modelsOnBench }

@@ -7,7 +7,10 @@
  *   2. assign letters in run order, so letter order is uncorrelated with roster order
  *   3. write the letter to model mapping to APS before the first call
  *   4. run every column in parallel with Promise.allSettled
- *   5. mark a failure FAILED, capture the error class only, never substitute or retry
+ *   5. mark a failure FAILED, capture the error class only, never substitute.
+ *      A reverse call the agent refused without a model round trip is repeated
+ *      a bounded number of times before its classification is allowed to
+ *      stand, because a refusal is a transport answer, not a model outcome.
  *
  * Nothing in this module logs a model name, a provider name, a workload or an
  * output. Logs carry the trial id and the letter, never anything that could
@@ -15,7 +18,7 @@
  */
 
 import { randomInt } from 'node:crypto'
-import { canSample, currentInvokeContext, logLine, reverseCall, ReverseRpcError, RPC_ERROR } from './rpc.js'
+import { canSample, currentInvokeContext, logLine, pause, reverseCall, ReverseRpcError, RPC_ERROR } from './rpc.js'
 import { computeCostUsd, computeRunningCostUsd, estimateTokens } from './cost.js'
 import { annaLaneFor, catalogueFor, credentialFor } from './roster.js'
 import { loadTrial, saveTrial, writeKey } from './store.js'
@@ -42,6 +45,31 @@ const LETTER_SUFFIXES = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 
 /** Live column progress, keyed by trial id then letter. Survives within the process. */
 const liveProgress = new Map<string, Map<Letter, ColumnStatus>>()
+
+/**
+ * Live full column results, keyed by trial id then letter.
+ *
+ * A background run cannot write to APS once its `trial_start` invoke has
+ * returned, so the full results are kept here until a later invoke persists
+ * them. The status read and the verdict read both bridge from this map.
+ */
+const liveResults = new Map<string, Map<Letter, ColumnResult>>()
+
+/** The wall clock when a trial's background run began, for live status fallbacks. */
+const liveStarts = new Map<string, number>()
+
+/**
+ * The full trial record, kept by object identity from mint to unblind.
+ *
+ * A background run cannot reach APS after its `trial_start` invoke returns,
+ * and a stubborn reverse storage channel can leave a persisted copy behind
+ * entirely, so every later method resolves through this map before it
+ * refuses, and every mutation is written onto the same object.
+ */
+const liveRecords = new Map<string, TrialRecord>()
+
+/** Records this process served from memory rather than from APS. */
+const servedFromLive = new WeakSet<TrialRecord>()
 
 /** Raised when the user is over the trial rate limit. */
 export class RateLimitError extends Error {
@@ -192,8 +220,11 @@ export async function startTrial(
 
   // The mapping is durable before the first call, so a crash mid-run can
   // never leak a name through ordering or through a partially written record.
+  liveRecords.set(record.id, record)
   await saveTrial(record)
   liveProgress.set(record.id, new Map(letters.map((letter) => [letter, pendingStatus(letter)])))
+  liveResults.set(record.id, new Map())
+  liveStarts.set(record.id, Date.now())
 
   const startedAt = new Date().toISOString()
   void runTrial(record, letters, startedAt)
@@ -224,6 +255,8 @@ function labelFor(modelId: ModelId): string {
 async function runTrial(record: TrialRecord, letters: Letter[], startedAtIso: string): Promise<void> {
   const started = Date.parse(startedAtIso)
   const progress = liveProgress.get(record.id) ?? new Map<Letter, ColumnStatus>()
+  const results = liveResults.get(record.id) ?? new Map<Letter, ColumnResult>()
+  liveResults.set(record.id, results)
 
   const settled = await Promise.allSettled(
     letters.map(async (letter) => {
@@ -236,6 +269,7 @@ async function runTrial(record: TrialRecord, letters: Letter[], startedAtIso: st
     const letter = letters[index]
     if (outcome.status === 'fulfilled') {
       record.results[letter] = outcome.value
+      results.set(letter, outcome.value)
       progress.set(letter, {
         letter,
         state: outcome.value.state,
@@ -247,7 +281,7 @@ async function runTrial(record: TrialRecord, letters: Letter[], startedAtIso: st
       })
     } else {
       const failure = outcome.reason as Error
-      record.results[letter] = {
+      const failed: ColumnResult = {
         state: 'failed',
         latencyMs: 0,
         tokensIn: 0,
@@ -259,6 +293,8 @@ async function runTrial(record: TrialRecord, letters: Letter[], startedAtIso: st
         errorClass: 'unknown',
         errorHint: 'this column did not return, run it again to see the cause',
       }
+      record.results[letter] = failed
+      results.set(letter, failed)
       progress.set(letter, {
         letter,
         state: 'failed',
@@ -278,10 +314,59 @@ async function runTrial(record: TrialRecord, letters: Letter[], startedAtIso: st
 }
 
 /**
+ * Whether a lane failure looks like a transient refusal rather than a lasting
+ * configuration answer.
+ *
+ * An explicit "sampling is not granted" or "sampling was never negotiated"
+ * is a permissions outcome, and repeating it only keeps the user waiting for
+ * a crash that has already happened. Any other answer coming off the reverse
+ * channel, including an unmapped refusal code with no model round trip at
+ * all, gets another attempt, because the agent has been seen to refuse a
+ * sampling frame instantly and serve the same lane normally on the next one.
+ * @param error The thrown value.
+ * @returns True when the call is worth repeating.
+ */
+function isTransientRefusal(error: unknown): boolean {
+  if (!(error instanceof ReverseRpcError)) return false
+  return (
+    error.code !== RPC_ERROR.samplingNotGranted &&
+    error.code !== RPC_ERROR.samplingNotNegotiated &&
+    error.code !== RPC_ERROR.methodNotFound
+  )
+}
+
+/**
+ * Calls one Anna lane for a column, repeating transient refusals.
+ *
+ * A refused attempt is repeated up to three times with a growing pause. The
+ * latency the column reports still measures what the user actually waited
+ * for, and the last failure keeps its own classification when nothing lands.
+ * @param modelId The lane id, for example `anna/speed`.
+ * @param workload The task text.
+ * @param letter The anonymised column key, for the run log only.
+ * @returns The reply text and any token counts the host reported.
+ * @throws The last refusal when every attempt was refused.
+ */
+async function callAnnaLaneWithRetry(modelId: ModelId, workload: string, letter: Letter): Promise<ProviderReply> {
+  const maxAttempts = 3
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await callAnnaLane(modelId, workload)
+    } catch (error) {
+      if (attempt >= maxAttempts || !isTransientRefusal(error)) throw error
+      const waitMs = 1500 * attempt
+      logLine('sampling refusal, retrying', letter, `attempt=${attempt}`, `wait=${waitMs}ms`)
+      await pause(waitMs)
+    }
+  }
+}
+
+/**
  * Executes one column and measures it.
  *
  * A failure is a FAILED column carrying an error class and an operator hint.
- * There is no retry and no substitution.
+ * There is no substitution. An Anna lane repeats a refused reverse call a
+ * bounded number of times before its classification is allowed to stand.
  * @param record The trial record, read only here.
  * @param letter The anonymised column key.
  * @returns The measured result, ok or failed.
@@ -294,7 +379,7 @@ async function runColumn(record: TrialRecord, letter: Letter): Promise<ColumnRes
   try {
     const raw =
       source === 'anna'
-        ? await callAnnaLane(modelId, record.workload)
+        ? await callAnnaLaneWithRetry(modelId, record.workload, letter)
         : await callProvider(modelId, record.workload)
 
     const output = raw.text.trim()
@@ -322,6 +407,7 @@ async function runColumn(record: TrialRecord, letter: Letter): Promise<ColumnRes
       costUsd,
       costSource: source === 'anna' ? 'unavailable' : 'price-table',
       output,
+      servedModel: raw.servedModel,
     }
   } catch (error) {
     const classified = classify(error, source)
@@ -381,7 +467,9 @@ class ProviderError extends Error {
  * A reverse RPC failure is separated from a provider failure because the fix
  * is different. A host that refuses `sampling/createMessage` never reached a
  * model at all, so telling the operator to check their API key sends them
- * looking in the wrong place when no key was involved.
+ * looking in the wrong place when no key was involved. An unmapped refusal
+ * keeps its raw numeric code inside the hint: it is the only trace such a
+ * refusal leaves, and a number names no model and lifts no blind.
  *
  * @param error The thrown value.
  * @param source Whether the column was an Anna lane or a bring-your-own-key model.
@@ -403,7 +491,7 @@ function classify(error: unknown, source: 'anna' | 'byok'): { errorClass: TrialE
         hint: 'this host does not implement Anna sampling, run the trial in Anna rather than a local harness',
       }
     }
-    return { errorClass: 'status', hint: 'Anna refused the sampling call for this lane, check the app permissions' }
+    return { errorClass: 'status', hint: `Anna refused the sampling call for this lane (code ${error.code}), check the app permissions` }
   }
 
   const name = (error as Error)?.name ?? ''
@@ -665,10 +753,10 @@ async function callAnnaLane(modelId: ModelId, workload: string): Promise<Provide
 
   const result = (await reverseCall('sampling/createMessage', {
     messages: [{ role: 'user', content: { type: 'text', text: workload } }],
-    max_tokens: 4096,
+    maxTokens: 4096,
     temperature: 0.2,
-    model_preferences: preferences,
-    include_context: 'none',
+    modelPreferences: preferences,
+    includeContext: 'none',
   })) as Record<string, unknown>
 
   return samplingReply(result)
@@ -706,6 +794,26 @@ function samplingReply(result: Record<string, unknown>): ProviderReply {
 }
 
 /**
+ * Reads a trial record for a tool method.
+ *
+ * The persisted copy is preferred. A record the storage channel could not
+ * serve never stops a run that is alive in memory: the same object startTrial
+ * minted answers instead, so a watching screen keeps working through a
+ * channel outage instead of being told the trial vanished.
+ * @param trialId The trial identifier.
+ * @returns The record, or null when neither store nor memory holds it.
+ */
+export async function loadTrialForTool(trialId: string): Promise<TrialRecord | null> {
+  const stored = await loadTrial(trialId)
+  if (stored) return stored
+  const live = liveRecords.get(trialId)
+  if (!live) return null
+  servedFromLive.add(live)
+  logLine('trial answered from live record', trialId)
+  return live
+}
+
+/**
  * Reads the live column states for a trial.
  * @param trialId The trial identifier.
  * @returns Per-letter state and live timers, never the mapping.
@@ -718,13 +826,25 @@ export async function trialStatus(trialId: string): Promise<{
   runMs: number
   stored: boolean
 }> {
-  const record = await loadTrial(trialId)
-  if (!record) throw new Error('Trial not found. It may have been cleared from storage.')
+  // A status read is the pulse a watching screen lives on, so one failed
+  // storage read must not be reported as absence on the spot. readKey already
+  // leashes a stubborn channel; one short repeat sits around that. When the
+  // trial is alive in memory the live record answers and `stored` is false,
+  // which every later screen treats as a read-only snapshot.
+  let stored = true
+  let record = await loadTrialForTool(trialId)
+  if (record === null) {
+    await pause(400)
+    record = await loadTrialForTool(trialId)
+  }
+  if (record === null) throw new Error('Trial not found. It may have been cleared from storage.')
+  if (servedFromLive.has(record)) stored = false
 
   const letters = Object.keys(record.rosterLetters)
   const live = liveProgress.get(trialId)
+  const results = liveResults.get(trialId)
   const columns: ColumnStatus[] = letters.map((letter) => {
-    const settled = record.results[letter]
+    const settled = record.results[letter] ?? results?.get(letter)
     if (settled) {
       return {
         letter,
@@ -739,15 +859,42 @@ export async function trialStatus(trialId: string): Promise<{
     return live?.get(letter) ?? pendingStatus(letter)
   })
 
+  // The background run cannot write to APS once its `trial_start` invoke has
+  // returned. A status read has its own invoke, so it persists any live
+  // results here before reporting the trial as settled.
+  let merged = false
+  for (const letter of letters) {
+    if (record.results[letter] === undefined) {
+      const result = results?.get(letter)
+      if (result) {
+        record.results[letter] = result
+        merged = true
+      }
+    }
+  }
   const settled = letters.every((letter) => record.results[letter] !== undefined)
+  if (settled && record.runMs === 0) {
+    record.runMs = Math.max(0, ...columns.map((column) => column.latencyMs))
+    merged = true
+  }
+  if (merged) await saveTrial(record)
   return {
     trialId,
     state: settled ? 'settled' : 'running',
     letters,
     columns,
     runMs: record.runMs,
-    stored: true,
+    stored,
   }
+}
+
+/**
+ * Returns the live results held for one trial, for the verdict fallback.
+ * @param trialId The trial identifier.
+ * @returns The live result map, or null when none is held.
+ */
+export function liveResultsFor(trialId: string): Map<Letter, ColumnResult> | null {
+  return liveResults.get(trialId) ?? null
 }
 
 /**

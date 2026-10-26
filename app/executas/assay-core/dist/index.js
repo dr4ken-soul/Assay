@@ -27,10 +27,10 @@
 import { logLine, setForwardHandler, setInvokeHandler, startTransport } from './rpc.js';
 import { TOOL_ID as GENERATED_TOOL_ID, VERSION as GENERATED_VERSION } from './generated-identity.js';
 import { CREDENTIAL_SCHEMA, listRoster } from './roster.js';
-import { RateLimitError, startTrial, trialStatus } from './trial.js';
+import { RateLimitError, loadTrialForTool, startTrial, trialStatus } from './trial.js';
 import { verdictAndStore } from './judge.js';
 import { exportPolicyJson, policyView, recordCrown, setLock } from './policy.js';
-import { loadPolicy, loadTrial, toSummary, trialIndex } from './store.js';
+import { loadPolicy, toSummary, trialIndex, writeTrialIndex } from './store.js';
 import { TASK_TYPES } from './types.js';
 /**
  * The tool id, compiled in from the discovery file.
@@ -192,11 +192,14 @@ function requireString(args, key) {
  * @throws Error when the trial is missing or does not meet the requirement.
  */
 async function loadTrialFor(trialId, requirement) {
-    const record = await loadTrial(trialId);
+    const record = await loadTrialForTool(trialId);
     if (!record)
         throw new Error('Trial not found. It may have been cleared from storage.');
-    if (requirement === 'verdict' && !record.verdict)
-        throw new Error('This trial has no verdict yet. Wait for the examiner.');
+    if (requirement === 'verdict') {
+        const pending = Object.keys(record.rosterLetters).some((letter) => record.results[letter] === undefined);
+        if (pending)
+            throw new Error('This trial is still running. Wait for every column to settle, then read the verdict.');
+    }
     if (requirement === 'crown' && record.crowned)
         throw new Error('This trial is already crowned. The choice is on the record.');
     if (requirement === 'unblind') {
@@ -241,12 +244,15 @@ async function runTool(tool, args, context) {
             if (letter !== 'tie' && record.results[letter]?.state === 'failed') {
                 throw new Error('That column failed, it cannot be crowned. Crown another or call it a tie.');
             }
-            const crowned = { ...record, crown: { letter, crownedAt: new Date().toISOString() }, crowned: true };
+            // The crown is a mutation on the record so the live copy this process
+            // holds stays the single truth even when APS is unreachable.
+            record.crown = { letter, crownedAt: new Date().toISOString() };
+            record.crowned = true;
             const { saveTrial } = await import('./store.js');
-            await saveTrial(crowned);
-            const policy = await recordCrown(crowned);
+            await saveTrial(record);
+            const policy = await recordCrown(record);
             return {
-                trialId: crowned.id,
+                trialId: record.id,
                 crowned: letter,
                 recorded: true,
                 policy: { version: policy.version, crownsRecorded: policy.crownsRecorded, rank: policy.rank },
@@ -254,35 +260,66 @@ async function runTool(tool, args, context) {
         }
         case 'trial_unblind': {
             const record = await loadTrialFor(requireString(args, 'trial_id'), 'unblind');
-            const revealed = { ...record, unblindedAt: new Date().toISOString() };
+            // The host reports the concrete model behind each Anna lane. Keep the
+            // lane label as the fallback and reveal the served model when it exists.
+            // The reveal is a mutation on the record so the live copy this process
+            // holds stays the single truth even when APS is unreachable.
+            const labels = { ...record.rosterLabels };
+            for (const [letter, result] of Object.entries(record.results)) {
+                if (result.servedModel)
+                    labels[letter] = result.servedModel;
+            }
+            record.rosterLabels = labels;
+            record.unblindedAt = new Date().toISOString();
             const { saveTrial } = await import('./store.js');
-            await saveTrial(revealed);
+            await saveTrial(record);
             return {
-                trialId: revealed.id,
-                revealed: Object.entries(revealed.rosterLabels).map(([letter, label]) => ({
+                trialId: record.id,
+                revealed: Object.entries(record.rosterLabels).map(([letter, label]) => ({
                     letter,
                     label,
-                    modelId: revealed.rosterLetters[letter],
-                    source: revealed.rosterSources[letter],
+                    modelId: record.rosterLetters[letter],
+                    source: record.rosterSources[letter],
                 })),
-                crowned: revealed.crown?.letter ?? null,
-                workload: revealed.workload,
+                crowned: record.crown?.letter ?? null,
+                workload: record.workload,
             };
         }
         case 'history_list': {
             const limitRaw = args.limit;
             const limit = typeof limitRaw === 'number' && limitRaw > 0 ? Math.min(200, Math.floor(limitRaw)) : 50;
-            const ids = await trialIndex();
-            const rows = [];
-            for (const id of ids.slice(0, limit)) {
-                const record = await loadTrial(id);
-                if (record)
-                    rows.push(toSummary(record));
+            const entries = await trialIndex();
+            // Modern rows already hold the summary, so a page is one storage read.
+            // Legacy rows hold bare identifiers; those are loaded in a single
+            // parallel wave and the index is rewritten with their summaries, so
+            // this chain of record reads is paid exactly once, not on every page.
+            const legacy = entries.filter((entry) => typeof entry === 'string');
+            if (legacy.length > 0) {
+                const loaded = new Map();
+                await Promise.all(legacy.map(async (id) => {
+                    const record = await loadTrialForTool(id);
+                    loaded.set(id, record ? toSummary(record) : null);
+                }));
+                const upgraded = entries.map((entry) => {
+                    if (typeof entry !== 'string')
+                        return entry;
+                    return loaded.get(entry) ?? entry;
+                });
+                // A row whose record vanished stays a bare id; a later page retries.
+                // The write is idempotent data, never a user-visible side effect.
+                await writeTrialIndex(upgraded);
+                entries.length = 0;
+                entries.push(...upgraded);
             }
-            return { trials: rows, total: ids.length };
+            const rows = [];
+            for (const entry of entries.slice(0, limit)) {
+                if (typeof entry !== 'string')
+                    rows.push(entry);
+            }
+            return { trials: rows, total: entries.length };
         }
         case 'history_get': {
-            const record = await loadTrial(requireString(args, 'trial_id'));
+            const record = await loadTrialForTool(requireString(args, 'trial_id'));
             if (!record)
                 throw new Error('Trial not found. It may have been cleared from storage.');
             const revealed = record.unblindedAt !== null;
@@ -292,7 +329,13 @@ async function runTool(tool, args, context) {
                     createdAt: record.createdAt,
                     workload: record.workload,
                     unblinded: revealed,
-                    results: record.results,
+                    results: revealed
+                        ? record.results
+                        : Object.fromEntries(Object.entries(record.results).map(([letter, result]) => {
+                            const visible = { ...result };
+                            delete visible.servedModel;
+                            return [letter, visible];
+                        })),
                     verdict: record.verdict,
                     crown: record.crown,
                     runMs: record.runMs,

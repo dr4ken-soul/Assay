@@ -55,6 +55,8 @@ export default function Anatomy() {
   const reduced = useReducedMotion()
   const report = anatomy()
   const bound = corpusIsBound()
+  const qualityLetter = report?.columns.find((column) => column.qualityLeader)?.letter
+  const valueLetter = report?.columns.find((column) => column.valueLeader)?.letter
 
   return (
     <section id="anatomy" data-density="dense" className="bg-bench-primary px-6 py-24 md:px-10 md:py-32">
@@ -101,8 +103,7 @@ export default function Anatomy() {
                 </div>
 
                 <p className="mt-6 border-t border-line-subtle pt-4 font-mono text-xs text-ink-primary">
-                  VERDICT: {report.columns.find((column) => column.qualityLeader)?.letter} ON QUALITY,{' '}
-                  {report.columns.find((column) => column.valueLeader)?.letter} ON VALUE. FULL MARGIN PUBLISHED BELOW.
+                  VERDICT: {qualityLetter} ON QUALITY{valueLetter ? `, ${valueLetter} ON VALUE` : ''}. FULL SCORES ABOVE.
                 </p>
 
                 <div className="pointer-events-none relative mt-4 hidden lg:block">

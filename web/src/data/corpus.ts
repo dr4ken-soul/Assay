@@ -42,6 +42,8 @@ export interface CorpusTrial {
   crowned: string
   /** The price table version the cost came from. */
   priceTableVersion: string
+  /** Milliseconds from the run settling to the verdict being complete. */
+  verdictMs: number
 }
 
 /** The corpus, empty until a real trial is pasted in. */
@@ -55,10 +57,37 @@ export interface Corpus {
 /**
  * The recorded trials.
  *
- * Replace this object with real runs. Do not type a number here that the tool
- * did not measure.
+ * Do not type a number here that the tool did not measure. The bound trial
+ * below is t_mvpt4zxe_2ntqd, recorded live on 2026-10-26 through the
+ * marketplace build of the app: one workload, three blind columns, one
+ * crown, then the reveal. Tokens and latency are as the tool measured them;
+ * the platform's Anna lanes do not report a cost figure, so the cost card
+ * keeps its unmeasured state rather than an estimate.
  */
 export const CORPUS: Corpus = {
-  bound: false,
-  trials: [],
+  bound: true,
+  trials: [
+    {
+      id: 't_mvpt4zxe_2ntqd',
+      createdAt: '2026-10-26T22:07:38.978Z',
+      workload:
+        'Write a 90-word product description for Assay, a blind trial bench that runs one real workload across several language models and hides their names until the user picks a winner. British English. No em dashes. No bullet points.',
+      revealed: [
+        { letter: 'MODEL A', label: 'google/gemini-3-flash-preview', modelId: 'anna/speed', source: 'anna' },
+        { letter: 'MODEL B', label: 'google/gemini-3-flash-preview', modelId: 'anna/cost', source: 'anna' },
+        { letter: 'MODEL C', label: 'google/gemini-3-flash-preview', modelId: 'anna/intelligence', source: 'anna' },
+      ],
+      scores: {
+        'MODEL A': { correctness: 5, instructionFit: 5, concision: 5, tone: 5, grounding: 5 },
+        'MODEL B': { correctness: 5, instructionFit: 5, concision: 5, tone: 5, grounding: 5 },
+        'MODEL C': { correctness: 5, instructionFit: 5, concision: 5, tone: 5, grounding: 5 },
+      },
+      costUsd: { 'MODEL A': null, 'MODEL B': null, 'MODEL C': null },
+      latencyMs: { 'MODEL A': 2298, 'MODEL B': 3470, 'MODEL C': 2689 },
+      failedCount: 0,
+      crowned: 'MODEL A',
+      priceTableVersion: '2026-09-28.v1',
+      verdictMs: 3957,
+    },
+  ],
 }
