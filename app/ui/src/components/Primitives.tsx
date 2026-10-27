@@ -52,10 +52,18 @@ export function EmptyState({
  *
  * Never a bare code, never a stack. A retry action is offered when there is
  * something to retry.
+/**
+ * An inline failure block.
+ *
+ * `eyebrow` names the state truthfully: a run that was stopped is a halt, a
+ * bench that never started is not. `calm` renders the neutral border used for
+ * those not-a-halt states, since red implies a run failed when none began.
  * @param cause What went wrong.
  * @param fix What to do about it.
  * @param onRetry Optional retry handler.
  * @param retryLabel The retry button label.
+ * @param eyebrow The small caps label above the cause.
+ * @param calm True for a bench-not-ready state rather than a stopped run.
  * @returns The error block.
  */
 export function ErrorNote({
@@ -63,19 +71,23 @@ export function ErrorNote({
   fix,
   onRetry,
   retryLabel = 'TRY AGAIN',
+  eyebrow = 'TRIAL HALTED',
+  calm = false,
 }: {
   cause: string
   fix: string
   onRetry?: () => void
   retryLabel?: string
+  eyebrow?: string
+  calm?: boolean
 }) {
   return (
     <div
       role="alert"
       data-testid="error-note"
-      className="rounded-lg border border-verdict-fail/40 bg-bench-surface p-4"
+      className={`rounded-lg border bg-bench-surface p-4 ${calm ? 'border-line' : 'border-verdict-fail/40'}`}
     >
-      <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-verdict-fail">TRIAL HALTED</p>
+      <p className={`font-mono text-[11px] uppercase tracking-[0.2em] ${calm ? 'text-ink-secondary' : 'text-verdict-fail'}`}>{eyebrow}</p>
       <p className="mt-2 font-body text-sm text-ink-primary">{cause}</p>
       <p className="mt-1 font-mono text-[11px] leading-relaxed text-ink-secondary">{fix}</p>
       {onRetry ? (

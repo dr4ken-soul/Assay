@@ -115,7 +115,7 @@ interface SdkRuntime {
 function fixFor(method: ToolMethod): string {
   switch (method) {
     case 'roster_list':
-      return 'Add a provider key in Anna settings, or grant sampling so Anna credits can stand in.'
+      return 'The bench tool could not be reached. Reopen the Assay window to retry.'
     case 'trial_start':
       return 'Pick at least two models on the bench, then run again.'
     case 'trial_status':
@@ -160,6 +160,21 @@ function toHostError(method: ToolMethod, error: unknown): AssayHostError {
   }
   if (code === 'tool_timeout' || code === 'tool_failed') {
     return new AssayHostError(code, 'The tool did not finish in time.', fixFor(method))
+  }
+  // A missing bench tool is an install state, not a key problem. The platform
+  // reports it when the agent has no running Executa for the window to reach,
+  // for example right after a fresh install on a second agent, and naming
+  // sampling here once sent a reviewer chasing provider keys instead of the
+  // reinstall.
+  if (
+    code === 'executa_unavailable' ||
+    /not deployed|is not available|no executa/i.test(`${code} ${message}`)
+  ) {
+    return new AssayHostError(
+      'executa_not_deployed',
+      `The Assay bench tool is not deployed on this agent yet. ${message}`,
+      'Reopen the Assay window or reinstall Assay from the Anna store, so the platform can deploy its bench tool, then retry.',
+    )
   }
   if (code === 'invalid_token') {
     return new AssayHostError('invalid_token', 'The window token expired.', 'Close and reopen the Assay window.')

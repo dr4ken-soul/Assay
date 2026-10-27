@@ -43,9 +43,9 @@ function waitFor(ms: number) {
  * @param error The thrown value.
  * @returns The cause and the fix.
  */
-function readError(error: unknown): { cause: string; fix: string } {
-  if (error instanceof AssayHostError) return { cause: error.cause, fix: error.fix }
-  return { cause: 'Something went wrong on the bench.', fix: 'Reopen the Assay window and try again.' }
+function readError(error: unknown): { code: string | null; cause: string; fix: string } {
+  if (error instanceof AssayHostError) return { code: error.code, cause: error.cause, fix: error.fix }
+  return { code: null, cause: 'Something went wrong on the bench.', fix: 'Reopen the Assay window and try again.' }
 }
 
 /**
@@ -66,7 +66,7 @@ export function Bench() {
   const [revealed, setRevealed] = useState<Record<Letter, string> | null>(null)
   const [crowned, setCrowned] = useState<Letter | 'tie' | null>(null)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<{ cause: string; fix: string } | null>(null)
+  const [error, setError] = useState<{ code: string | null; cause: string; fix: string } | null>(null)
   const [elapsed, setElapsed] = useState(0)
   const runStarted = useRef<number>(0)
 
@@ -231,7 +231,13 @@ export function Bench() {
   }
 
   const letters = started?.letters ?? []
-  const canRun = selected.length >= 2 && workload.trim().length >= 8 && !busy
+  // A lane chip that reads NO KEY cannot be sampled on Anna credits either
+  // until the user grants it, so a bench of only keyless lanes would send the
+  // run straight to the sampler's refusal. Saying that before Run is cheaper
+  // than a halted trial after it.
+  const allKeyless =
+    selected.length > 0 && selected.every((id) => roster.find((entry) => entry.id === id)?.hasKey === false)
+  const canRun = selected.length >= 2 && workload.trim().length >= 8 && !busy && !allKeyless
 
   if (rosterLoading) {
     return (
@@ -249,7 +255,14 @@ export function Bench() {
     return (
       <div className="mx-auto max-w-5xl px-4 py-10 md:px-6">
         {error ? (
-          <ErrorNote cause={error.cause} fix={error.fix} onRetry={loadRoster} retryLabel="RELOAD BENCH" />
+          <ErrorNote
+            cause={error.cause}
+            fix={error.fix}
+            onRetry={loadRoster}
+            retryLabel="RELOAD BENCH"
+            eyebrow="BENCH NOT READY"
+            calm
+          />
         ) : (
           <EmptyState
             title="No models on the bench yet"
@@ -328,6 +341,12 @@ export function Bench() {
               })}
             </div>
             <p className="mt-3 font-mono text-[11px] text-ink-muted">PICK AT LEAST TWO. THE BLIND NEEDS COMPANY.</p>
+            {allKeyless ? (
+              <p className="mt-3 font-mono text-[11px] leading-relaxed text-verdict-fail" data-testid="keyless-note">
+                NO KEY OR SAMPLING ON THE SELECTED LANES. ADD A PROVIDER KEY IN ANNA SETTINGS, OR GRANT SAMPLING SO
+                ANNA CREDITS CAN STAND IN.
+              </p>
+            ) : null}
 
             <div className="mt-8">
               <PrimaryButton onClick={run} disabled={!canRun} testId="run-trial">
@@ -337,7 +356,14 @@ export function Bench() {
 
             {error ? (
               <div className="mt-6">
-                <ErrorNote cause={error.cause} fix={error.fix} onRetry={loadRoster} retryLabel="RELOAD BENCH" />
+                <ErrorNote
+                  cause={error.cause}
+                  fix={error.fix}
+                  onRetry={loadRoster}
+                  retryLabel="RELOAD BENCH"
+                  eyebrow={error.code === 'executa_not_deployed' ? 'BENCH NOT READY' : 'TRIAL HALTED'}
+                  calm={error.code === 'executa_not_deployed'}
+                />
               </div>
             ) : null}
           </motion.section>
